@@ -1,0 +1,20 @@
+name: MCZJUScription
+version: '${project.version}'
+main: com.github.mczju.mczjuscription.MCZJUScriptionPlugin
+api-version: '1.21.7'
+depend: [MCZJUGameCore]
+commands:
+  isc:
+    description: 邪恶冥刻指令
+    usage: /isc <arena|deck>
+    permission: inscription.play
+permissions:
+  inscription.play:
+    description: 对局内操作与商店
+    default: true
+  inscription.deck:
+    description: 编辑构牌
+    default: true
+  inscription.admin:
+    description: 管理指令
+    default: op
