@@ -5,7 +5,7 @@ api-version: '1.21.7'
 depend: [MCZJUGameCore]
 commands:
   isc:
-    description: 邪恶冥刻指令
+    description: 邪恶冥刻 · 方块造物 指令
     usage: /isc <arena|deck>
     permission: inscription.play
 permissions:
@@ -19,5 +19,5 @@ permissions:
     description: 管理指令
     default: op
   inscription.hub:
-    description: 邪恶冥刻等待大厅交互
+    description: 邪恶冥刻 · 方块造物 等待大厅交互
     default: true

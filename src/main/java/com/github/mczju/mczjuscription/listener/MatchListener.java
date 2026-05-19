@@ -96,8 +96,7 @@ public final class MatchListener implements Listener {
         MatchSide side = match.sideFor(player);
         if (side == null) return;
 
-        if (match.wanderingTraderEntityId() != null
-                && event.getRightClicked().getUniqueId().equals(match.wanderingTraderEntityId())) {
+        if (WanderingTraderService.isTraderEntity(event.getRightClicked(), match)) {
             event.setCancelled(true);
             WanderingTraderService.tryOpenMenu(player, match);
             return;

@@ -1,5 +1,5 @@
 {
-  "gameId": "inscription_hub",
+  "gameId": "inscription",
   "roomName": "main",
   "spawnAt": {
     "world": "world",
@@ -33,7 +33,7 @@
     "y": 64.0,
     "z": 3.0
   },
-  "soloSeat0": {
+  "soloSeat": {
     "world": "world",
     "x": 8.5,
     "y": 64.0,
@@ -43,7 +43,15 @@
   },
   "duelSeat0": {
     "world": "world",
-    "x": -8.5,
+    "x": -9.5,
+    "y": 64.0,
+    "z": 0.5,
+    "yaw": 90.0,
+    "pitch": 0.0
+  },
+  "duelSeat1": {
+    "world": "world",
+    "x": -7.5,
     "y": 64.0,
     "z": 0.5,
     "yaw": 90.0,

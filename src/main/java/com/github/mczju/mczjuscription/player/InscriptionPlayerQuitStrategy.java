@@ -1,7 +1,9 @@
 package com.github.mczju.mczjuscription.player;
 
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
+import com.github.mczju.mczjuscription.game.InscriptionGame;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
+import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.game.session.MatchMode;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
@@ -25,6 +27,15 @@ public final class InscriptionPlayerQuitStrategy extends AbstractPlayerQuitStrat
         if (!(game instanceof AbstractInscriptionGame inscriptionGame)) {
             return;
         }
+
+        if (game instanceof InscriptionGame hubGame && hubGame.isHubPhase()) {
+            hubGame.onHubPlayerLeave(player);
+            if (MCZJUGameCore.getPlayerManager().getPlayers(game).isEmpty()) {
+                MCZJUGameCore.getGameManager().abortGame(game);
+            }
+            return;
+        }
+
         InscriptionMatch match = inscriptionGame.match();
         if (match == null || match.isMatchOver()) {
             return;

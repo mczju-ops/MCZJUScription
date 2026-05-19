@@ -26,23 +26,15 @@ public final class DuelModePickMenu extends Menu {
     @Override
     protected void setup() {
         inventory.clear();
-        boolean duelReady = HubMatchLauncher.isDuelRegistered();
 
         setSlot(
                 10,
                 ItemBuilder.of(Material.EMERALD)
                         .customName("<gold>双人 · 商店")
-                        .lore(
-                                List.of(
-                                        duelReady ? "<gray>2 人队伍" : "<red>尚未注册",
-                                        "<yellow>点击选择"))
+                        .lore(List.of("<gray>2 人队伍", "<yellow>点击选择"))
                         .glint(selected == PlayVariant.DUEL_SHOP)
                         .build(),
                 (p, e) -> {
-                    if (!duelReady) {
-                        p.sender().warn("双人模式尚未开放。");
-                        return;
-                    }
                     selected = PlayVariant.DUEL_SHOP;
                     setup();
                 });
@@ -51,17 +43,10 @@ public final class DuelModePickMenu extends Menu {
                 14,
                 ItemBuilder.of(Material.WRITABLE_BOOK)
                         .customName("<aqua>双人 · 构牌")
-                        .lore(
-                                List.of(
-                                        duelReady ? "<gray>2 人队伍" : "<red>尚未注册",
-                                        "<yellow>点击选择"))
+                        .lore(List.of("<gray>2 人队伍", "<yellow>点击选择"))
                         .glint(selected == PlayVariant.DUEL_FREE_BUILD)
                         .build(),
                 (p, e) -> {
-                    if (!duelReady) {
-                        p.sender().warn("双人模式尚未开放。");
-                        return;
-                    }
                     selected = PlayVariant.DUEL_FREE_BUILD;
                     setup();
                 });

@@ -143,8 +143,7 @@ public final class TurnController {
             return;
         }
         if (next == TurnPhase.DRAW) {
-            InscriptionGameRoom room = (InscriptionGameRoom) match.game().getGameRoom();
-            WanderingTraderService.onTraderTurnStart(match, room);
+            WanderingTraderService.onTraderTurnStart(match);
         } else if (next != TurnPhase.DRAW) {
             WanderingTraderService.despawnTrader(match);
         }

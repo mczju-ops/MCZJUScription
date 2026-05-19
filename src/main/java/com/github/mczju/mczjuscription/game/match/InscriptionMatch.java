@@ -5,6 +5,8 @@ import com.github.mczju.mczjuscription.arena.ArenaManager;
 import com.github.mczju.mczjuscription.arena.BattleArena;
 import com.github.mczju.mczjuscription.entity.CreatureEntityService;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
+import com.github.mczju.mczjuscription.game.InscriptionGame;
+import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczju.mczjuscription.game.board.BattleBoard;
 import com.github.mczju.mczjuscription.game.board.BoardRules;
 import com.github.mczju.mczjuscription.game.board.BoardSides;
@@ -149,6 +151,20 @@ public final class InscriptionMatch {
 
     public AbstractInscriptionGame game() {
         return game;
+    }
+
+    /** 对局场地配置（优先插件分配的 play 房，而非 MGC 绑定的 main）。 */
+    public InscriptionGameRoom matchRoom() {
+        if (game instanceof InscriptionGame inscription) {
+            InscriptionGameRoom dedicated = inscription.matchRoom();
+            if (dedicated != null) {
+                return dedicated;
+            }
+        }
+        if (game.getGameRoom() instanceof InscriptionGameRoom room) {
+            return room;
+        }
+        return null;
     }
 
     public ParticipantState participant(MatchSide side) {

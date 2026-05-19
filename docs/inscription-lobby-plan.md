@@ -100,8 +100,8 @@ if (ext.isInGame(AbstractInscriptionGame.class) && game.getState() == RUNNING) {
 | `blessingAt` | `Location` | 赐福区交互点（方块或压力板中心） |
 | `curseSelectAt` | `Location` | 诅咒选择区交互点 |
 | `leaderboardAt` | `Location` | 排行榜交互点 |
-| `soloSeat0` … `soloSeatN` | `Location` | 单人座位（含 yaw/pitch）；伪数组 `soloSeat0`,`soloSeat1`… |
-| `duelSeat0` … `duelSeatM` | `Location` | 双人座位 |
+| `soloSeat` | `Location` | **1 个**单人座位（含 yaw/pitch） |
+| `duelSeat0` / `duelSeat1` | `Location` | **2 个**双人座位（队长与队员各坐一位） |
 | `signAt0` … | `Location` | 路标 TextDisplay 位置 |
 | `signText0` … | `String` | 路标文案（MiniMessage） |
 
@@ -138,7 +138,6 @@ com.github.mczju.mczjuscription.lobby/
 └── menu/
     ├── SoloModePickMenu.java         # 商店 / 自由构牌
     ├── DuelModePickMenu.java         # 模式 + 诅咒确认链
-    ├── LeaderboardMenu.java          # 前十 GUI
     ├── BlessingPlaceholderMenu.java
     └── CursePlaceholderMenu.java
 ```
@@ -181,7 +180,7 @@ com.github.mczju.mczjuscription.lobby/
 2. 相同则 `clearCountAtBestDifficulty` **降序**（该难度下的通关次数）
 3. 取前 **10** 名
 
-**展示**：`LeaderboardMenu`（6 行 GUI），每行玩家名 + 难度 + 次数；暂无数据时提示。
+**展示**：MGC `inscription_clear` TextDisplay（世界内看榜，无 GUI）。
 
 **数据来源**：遍历 `inscription` 命名空间下所有 `InscriptionPlayerData`（或 MGC `PlayerDataManager` 提供的枚举 API，若有）。
 
@@ -193,7 +192,7 @@ com.github.mczju.mczjuscription.lobby/
 
 ### 6.5 单人对战区
 
-1. 玩家右键 `soloSeatK` 或进入座位半径 → `HubSeatService.tryOccupy(uuid, seatId)`。
+1. 玩家右键 `soloSeat` 附近 → 占座并打开模式菜单。
 2. 传送到座位 `Location`（yaw/pitch）；可选 `ArmorStand` 骑乘模拟椅子。
 3. 打开 `SoloModePickMenu`：**商店模式** → `SoloShopGame`；**自由组卡** → `SoloFreeBuildGame`。
 4. `HubMatchLauncher.startSolo(player, variant)`：
@@ -203,7 +202,7 @@ com.github.mczju.mczjuscription.lobby/
 
 ### 6.6 双人对战区
 
-1. 需要 **Party 2 人**（队长操作；成员需在 `duelSeat` 就位或同区域）。
+1. 需要 **Party 2 人**；队长在 `duelSeat0` 或 `duelSeat1` 任一处右键，两人分别坐到两个座位。
 2. `DuelModePickMenu`：模式（商店/构牌）→ 展示双方诅咒 → `AlertMenu` 确认。
 3. `HubMatchLauncher.startDuel(party, variant)`：全队 quit hub → `joinGame` → `DuelShopGame` / `DuelFreeBuildGame`。
 4. 对局：`DefaultGameWaitStrategy(this, 2, 2)`；人满 `startGame()`。
@@ -264,10 +263,10 @@ com.github.mczju.mczjuscription.lobby/
 | 状态 | ID | 任务 |
 |:----:|:---:|------|
 | [x] | C1 | `InscriptionPlayerData` 增加 `bestClearDifficulty`、`clearCountAtBestDifficulty`（及 §6.4.1 难度字段） |
-| [x] | C2 | `LeaderboardService` 聚合排序取前十 |
-| [x] | C3 | `LeaderboardMenu` + `leaderboardAt` 交互 |
+| [x] | C2 | `InscriptionClearLeaderboard` + `InscriptionClearRankings`（MGC `LeaderboardManager`） |
+| [x] | C3 | `leaderboardAt` 右键刷新 TextDisplay（无 GUI） |
 | [x] | C4 | `AbstractInscriptionGame.recordPlayerStats` 更新排行字段 |
-| [x] | C5 | 排行榜无数据 / 不足十人时的 UI 占位 |
+| [x] | C5 | 排行榜空状态由 MGC `renderEmpty()` 处理 |
 
 ### Phase D — 单人座位与开局
 

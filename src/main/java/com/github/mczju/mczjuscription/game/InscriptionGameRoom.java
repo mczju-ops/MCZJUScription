@@ -5,11 +5,15 @@ import com.github.mczjuops.mczjugamecore.game.room.JsonGameRoom;
 import org.bukkit.Location;
 
 /**
- * 房间参数。槽位坐标可通过 /mgcop room edit 配置；
- * 若未配置，对局中仍可用 /isc arena 临时生成场地。
+ * 邪恶冥刻房间配置（大厅 + 对局场地，{@code plugins/MCZJUGameCore/rooms/inscription/*.json}）。
+ * <p>
+ * 槽位坐标可通过 /mgcop room edit 配置；若未配置，对局中仍可用 /isc arena 临时生成场地。
  */
 public class InscriptionGameRoom extends JsonGameRoom {
+
+    /** 大厅出生点 / 对局传送点（共用同一字段，避免 Gson 继承重复字段）。 */
     public Location spawnAt;
+
     public Integer playerCandles;
     public Integer enemyCandles;
     /** 敲钟交互点（与槽位相同：房间编辑里标定的中心坐标）。 */
@@ -34,6 +38,41 @@ public class InscriptionGameRoom extends JsonGameRoom {
     public Location previewSlot1;
     public Location previewSlot2;
     public Location previewSlot3;
+
+    // --- 大厅 ---
+
+    public Location deckLecternAt;
+    public Location blessingAt;
+    public Location curseSelectAt;
+    public Location leaderboardAt;
+
+    /** 单人座位（1 个），含 yaw/pitch。 */
+    public Location soloSeat;
+    /** 双人座位（2 个），队长/队员各坐一位。 */
+    public Location duelSeat0;
+    public Location duelSeat1;
+
+    public Location signAt0;
+    public Location signAt1;
+    public Location signAt2;
+    public Location signAt3;
+    public Location signAt4;
+    public Location signAt5;
+    public Location signAt6;
+    public Location signAt7;
+
+    public String signText0;
+    public String signText1;
+    public String signText2;
+    public String signText3;
+    public String signText4;
+    public String signText5;
+    public String signText6;
+    public String signText7;
+
+    /** 兼容旧房间 JSON 中的 {@code soloSeat0}。 */
+    @Deprecated
+    public Location soloSeat0;
 
     public boolean hasConfiguredArena() {
         return playerSlot0 != null && enemySlot0 != null && previewSlot0 != null;

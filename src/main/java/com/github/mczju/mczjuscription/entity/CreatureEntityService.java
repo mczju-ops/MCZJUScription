@@ -9,8 +9,9 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Display;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.TextDisplay;
@@ -25,50 +26,19 @@ public final class CreatureEntityService {
   private CreatureEntityService() {}
 
   public static void spawn(BoardCreature creature, Location at) {
-    CardTemplate def = creature.template();
     Location spawnAt = at.clone();
-
-    LivingEntity mount = null;
-    if (def.hasMount()) {
-      mount = (LivingEntity) spawnAt.getWorld().spawnEntity(spawnAt, def.mountEntityType());
-      configureMob(mount);
+    if (spawnAt.getWorld() == null) {
+      return;
     }
 
-    Location riderAt = spawnAt.clone();
-    if (mount != null) {
-      riderAt.add(0, Math.max(0.1, mount.getHeight() * 0.35), 0);
+    SpawnBundle bundle = trySpawnLiving(creature, spawnAt);
+    if (bundle == null) {
+      bundle = spawnFallback(creature, spawnAt);
     }
-
-    LivingEntity entity =
-        (LivingEntity) riderAt.getWorld().spawnEntity(riderAt, def.entityType());
-    entity.setRotation(spawnAt.getYaw(), spawnAt.getPitch());
-    configureMob(entity);
-    if (mount != null && mount instanceof org.bukkit.entity.Mob mountMob) {
-      mountMob.addPassenger(entity);
+    if (bundle == null) {
+      return;
     }
-    entity
-        .getPersistentDataContainer()
-        .set(
-            InscriptionKeys.CREATURE_INSTANCE,
-            PersistentDataType.STRING,
-            creature.instanceId().toString());
-
-    TextDisplay label =
-        spawnAt
-            .getWorld()
-            .spawn(
-                spawnAt.clone().add(0, entity.getHeight() + LABEL_HEIGHT, 0),
-                TextDisplay.class,
-                display -> {
-                  display.text(buildLabel(creature));
-                  display.setBillboard(Display.Billboard.CENTER);
-                  display.setSeeThrough(true);
-                  display.setShadowed(true);
-                  display.setDefaultBackground(false);
-                  display.setPersistent(true);
-                });
-
-    creature.bindEntity(entity.getUniqueId(), label.getUniqueId());
+    creature.bindEntity(bundle.bodyId(), bundle.labelId());
   }
 
   public static void refreshLabel(BoardCreature creature) {
@@ -81,25 +51,82 @@ public final class CreatureEntityService {
   }
 
   public static void despawn(BoardCreature creature) {
-    Entity ridden = findEntity(creature.entityId());
-    if (ridden != null && ridden.getVehicle() != null) {
-      ridden.getVehicle().remove();
+    Entity body = findEntity(creature.entityId());
+    if (body != null && body.getVehicle() != null) {
+      body.getVehicle().remove();
+    }
+    if (body instanceof LivingEntity living && living.getPassengers() != null) {
+      for (Entity passenger : living.getPassengers()) {
+        passenger.remove();
+      }
     }
     removeIfPresent(creature.entityId());
     removeIfPresent(creature.displayEntityId());
     creature.clearEntityRefs();
   }
 
-  private static void configureMob(LivingEntity entity) {
-    entity.setCustomNameVisible(false);
-    entity.setRemoveWhenFarAway(false);
-    entity.setPersistent(true);
-    if (entity instanceof Mob mob) {
-      mob.setAI(false);
-      mob.setAware(false);
-      mob.setCollidable(false);
-      mob.setSilent(true);
+  private static SpawnBundle trySpawnLiving(BoardCreature creature, Location spawnAt) {
+    World world = spawnAt.getWorld();
+    if (world == null) {
+      return null;
     }
+
+    try {
+      LivingEntity mount = null;
+      if (creature.template().hasMount()) {
+        EntityType mountType = creature.template().mountEntityType();
+        mount = (LivingEntity) world.spawnEntity(spawnAt, mountType);
+        MatchEntityProtection.apply(mount);
+      }
+
+      Location riderAt = spawnAt.clone();
+      if (mount != null) {
+        riderAt.add(0, Math.max(0.1, mount.getHeight() * 0.35), 0);
+      }
+
+      EntityType bodyType = creature.template().entityType();
+      LivingEntity entity = (LivingEntity) riderAt.getWorld().spawnEntity(riderAt, bodyType);
+      if (!entity.isValid()) {
+        entity.remove();
+        if (mount != null) {
+          mount.remove();
+        }
+        return null;
+      }
+      entity.setRotation(spawnAt.getYaw(), spawnAt.getPitch());
+      MatchEntityProtection.apply(entity);
+      if (mount != null && mount instanceof Mob mountMob) {
+        mountMob.addPassenger(entity);
+      }
+      MatchEntityDisplay.tagCreature(entity, creature.instanceId());
+
+      TextDisplay label = MatchEntityDisplay.spawnLabel(
+          spawnAt.clone().add(0, entity.getHeight() + LABEL_HEIGHT, 0), buildLabel(creature));
+      if (label == null) {
+        entity.remove();
+        if (mount != null) {
+          mount.remove();
+        }
+        return null;
+      }
+      return new SpawnBundle(entity.getUniqueId(), label.getUniqueId());
+    } catch (RuntimeException ex) {
+      return null;
+    }
+  }
+
+  private static SpawnBundle spawnFallback(BoardCreature creature, Location spawnAt) {
+    BlockDisplay potato = MatchEntityDisplay.spawnPotatoModel(spawnAt);
+    if (potato == null) {
+      return null;
+    }
+    MatchEntityDisplay.tagCreature(potato, creature.instanceId());
+    TextDisplay label = MatchEntityDisplay.spawnLabel(spawnAt, buildLabel(creature));
+    if (label == null) {
+      potato.remove();
+      return null;
+    }
+    return new SpawnBundle(potato.getUniqueId(), label.getUniqueId());
   }
 
   private static Component buildLabel(BoardCreature creature) {
@@ -128,12 +155,15 @@ public final class CreatureEntityService {
   public static void purgeAllMatchCreatures() {
     for (World world : Bukkit.getWorlds()) {
       for (Entity entity : world.getEntities()) {
-        if (!entity.getPersistentDataContainer()
-            .has(InscriptionKeys.CREATURE_INSTANCE, PersistentDataType.STRING)) {
-          continue;
+        var pdc = entity.getPersistentDataContainer();
+        if (pdc.has(InscriptionKeys.CREATURE_INSTANCE, PersistentDataType.STRING)
+            || pdc.has(InscriptionKeys.WANDERING_TRADER, PersistentDataType.BYTE)
+            || pdc.has(InscriptionKeys.MATCH_DISPLAY, PersistentDataType.BYTE)) {
+          entity.remove();
         }
-        entity.remove();
       }
     }
   }
+
+  private record SpawnBundle(UUID bodyId, UUID labelId) {}
 }

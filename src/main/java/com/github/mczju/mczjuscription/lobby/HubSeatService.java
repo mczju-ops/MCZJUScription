@@ -1,5 +1,6 @@
 package com.github.mczju.mczjuscription.lobby;
 
+import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
 import java.util.List;
 import java.util.UUID;
@@ -11,51 +12,62 @@ import org.bukkit.entity.Player;
 /** 大厅座位：占座、传送、椅子骑乘。 */
 public final class HubSeatService {
 
+    private static final String SOLO_SEAT_KEY = "solo";
+    private static final String DUEL_PAIR_KEY = "duel";
+
     private HubSeatService() {}
 
-    public static boolean occupySolo(PlayerExt player, InscriptionHubRoom room, int seatIndex) {
-        List<Location> seats = HubLocationUtil.soloSeats(room);
-        if (seatIndex < 0 || seatIndex >= seats.size()) {
+    public static boolean occupySolo(PlayerExt player, InscriptionGameRoom room) {
+        Location seat = HubLocationUtil.soloSeat(room);
+        if (seat == null) {
+            player.sender().warn("未配置单人座位 soloSeat。");
             return false;
         }
         if (player.isInParty()) {
             player.sender().warn("请先 <white>/party leave</white> 再使用单人座位。");
             return false;
         }
-        String key = "solo:" + seatIndex;
-        if (!HubSession.tryOccupy(player.getUniqueId(), key, HubSession.SeatKind.SOLO)) {
-            player.sender().warn("该座位已被占用。");
+        if (!HubSession.tryOccupy(player.getUniqueId(), SOLO_SEAT_KEY, HubSession.SeatKind.SOLO)) {
+            player.sender().warn("单人座位已被占用。");
             return false;
         }
-        sitAt(player, seats.get(seatIndex));
+        sitAt(player, seat);
         return true;
     }
 
-    public static boolean occupyDuel(PlayerExt player, InscriptionHubRoom room, int seatIndex) {
+    /**
+     * 双人座：队长在任一席位右键开启；两名队员分别坐到 {@code duelSeat0}、{@code duelSeat1}。
+     */
+    public static boolean occupyDuel(PlayerExt leader, InscriptionGameRoom room) {
         List<Location> seats = HubLocationUtil.duelSeats(room);
-        if (seatIndex < 0 || seatIndex >= seats.size()) {
+        if (seats.size() < 2) {
+            leader.sender().warn("未配置两个双人座位 duelSeat0、duelSeat1。");
             return false;
         }
-        if (!player.isInParty()) {
-            player.sender().warn("双人模式需要 2 人队伍，请先用 <white>/party invite</white> 组队。");
+        if (!leader.isInParty()) {
+            leader.sender().warn("双人模式需要 2 人队伍，请先用 <white>/party invite</white> 组队。");
             return false;
         }
-        if (player.getParty().getAllPlayer().size() != 2) {
-            player.sender().warn("双人模式需要恰好 2 人的队伍。");
+        if (leader.getParty().getAllPlayer().size() != 2) {
+            leader.sender().warn("双人模式需要恰好 2 人的队伍。");
             return false;
         }
-        if (!player.isPartyLeader()) {
-            player.sender().warn("请让队长选择双人座位。");
+        if (!leader.isPartyLeader()) {
+            leader.sender().warn("请让队长在双人座位处开启。");
             return false;
         }
-        String key = "duel:" + seatIndex;
-        if (!HubSession.tryOccupy(player.getUniqueId(), key, HubSession.SeatKind.DUEL)) {
-            player.sender().warn("该双人座位已被占用。");
+        if (!HubSession.tryOccupy(leader.getUniqueId(), DUEL_PAIR_KEY, HubSession.SeatKind.DUEL)) {
+            leader.sender().warn("双人座位已被占用。");
             return false;
         }
-        for (PlayerExt member : player.getParty().getAllPlayer()) {
-            HubSession.tryOccupy(member.getUniqueId(), key, HubSession.SeatKind.DUEL);
-            sitAt(member, seats.get(seatIndex));
+
+        List<PlayerExt> members = leader.getParty().getAllPlayer();
+        Location seatA = seats.get(0);
+        Location seatB = seats.get(1);
+        for (int i = 0; i < members.size(); i++) {
+            PlayerExt member = members.get(i);
+            HubSession.tryOccupy(member.getUniqueId(), DUEL_PAIR_KEY, HubSession.SeatKind.DUEL);
+            sitAt(member, i == 0 ? seatA : seatB);
         }
         return true;
     }

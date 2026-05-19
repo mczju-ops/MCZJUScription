@@ -15,7 +15,8 @@
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- 与 https://github.com/mczju-ops/MCZJUGameCore 的 release / tag 对齐 -->
-    <mczju.gamecore.version>1.0.1</mczju.gamecore.version>
+    <!-- 需含 LeaderboardManager：MCZJUGameCore ≥ 1.0.2，本地可 mvn install -->
+    <mczju.gamecore.version>1.0.2</mczju.gamecore.version>
   </properties>
 
   <build>

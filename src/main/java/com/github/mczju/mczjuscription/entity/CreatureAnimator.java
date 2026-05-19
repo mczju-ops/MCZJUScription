@@ -7,6 +7,7 @@ import com.github.mczju.mczjuscription.vfx.BoardVfx;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.TextDisplay;
@@ -76,12 +77,31 @@ public final class CreatureAnimator {
     }
 
     public static void animateMove(BoardCreature creature, Location end, int ticks, Float faceYaw, Runnable onComplete) {
-        LivingEntity mob = living(creature);
-        if (mob == null || end == null) {
+        if (end == null) {
             if (onComplete != null) onComplete.run();
             return;
         }
-        Entity display = display(creature);
+        LivingEntity mob = living(creature);
+        if (mob != null) {
+            animateLivingMove(creature, mob, end, ticks, faceYaw, onComplete);
+            return;
+        }
+        Entity body = body(creature);
+        if (body != null) {
+            animateDisplayMove(creature, body, end, ticks, onComplete);
+            return;
+        }
+        if (onComplete != null) onComplete.run();
+    }
+
+    private static void animateLivingMove(
+            BoardCreature creature,
+            LivingEntity mob,
+            Location end,
+            int ticks,
+            Float faceYaw,
+            Runnable onComplete) {
+        Entity label = display(creature);
         Location start = mob.getLocation().clone();
         Location goal = end.clone();
         if (faceYaw != null) {
@@ -106,8 +126,8 @@ public final class CreatureAnimator {
                 }
                 if (step >= ticks) {
                     mob.teleport(goal);
-                    if (display != null && display.isValid()) {
-                        display.teleport(goal.clone().add(0, labelOffset, 0));
+                    if (label != null && label.isValid()) {
+                        label.teleport(goal.clone().add(0, labelOffset, 0));
                     }
                     cancel();
                     if (onComplete != null) onComplete.run();
@@ -116,11 +136,50 @@ public final class CreatureAnimator {
                 double t = (step + 1.0) / ticks;
                 Location at = lerp(start, goal, t);
                 mob.teleport(at);
-                if (display != null && display.isValid()) {
-                    display.teleport(at.clone().add(0, labelOffset, 0));
+                if (label != null && label.isValid()) {
+                    label.teleport(at.clone().add(0, labelOffset, 0));
                 }
                 if (step % 2 == 0) {
                     at.getWorld().spawnParticle(Particle.CLOUD, at.clone().add(0, 0.5, 0), 2, 0.05, 0.05, 0.05, 0.01);
+                }
+                step++;
+            }
+        }.runTaskTimer(MCZJUScriptionPlugin.getInstance(), 0L, 1L);
+    }
+
+    private static void animateDisplayMove(
+            BoardCreature creature, Entity body, Location end, int ticks, Runnable onComplete) {
+        Entity label = display(creature);
+        Location start = body.getLocation().clone();
+        Location goal = end.clone();
+        goal.setYaw(start.getYaw());
+        goal.setPitch(start.getPitch());
+        double labelOffset = body instanceof BlockDisplay ? 0.55 : 0.35;
+
+        new BukkitRunnable() {
+            int step = 0;
+
+            @Override
+            public void run() {
+                if (!body.isValid()) {
+                    cancel();
+                    if (onComplete != null) onComplete.run();
+                    return;
+                }
+                if (step >= ticks) {
+                    body.teleport(goal);
+                    if (label != null && label.isValid()) {
+                        label.teleport(goal.clone().add(0, labelOffset, 0));
+                    }
+                    cancel();
+                    if (onComplete != null) onComplete.run();
+                    return;
+                }
+                double t = (step + 1.0) / ticks;
+                Location at = lerp(start, goal, t);
+                body.teleport(at);
+                if (label != null && label.isValid()) {
+                    label.teleport(at.clone().add(0, labelOffset, 0));
                 }
                 step++;
             }
@@ -159,7 +218,15 @@ public final class CreatureAnimator {
     private static LivingEntity living(BoardCreature creature) {
         if (creature == null || creature.entityId() == null) return null;
         Entity entity = Bukkit.getEntity(creature.entityId());
+        if (entity instanceof BlockDisplay) {
+            return null;
+        }
         return entity instanceof LivingEntity living ? living : null;
+    }
+
+    private static Entity body(BoardCreature creature) {
+        if (creature == null || creature.entityId() == null) return null;
+        return Bukkit.getEntity(creature.entityId());
     }
 
     private static Entity display(BoardCreature creature) {

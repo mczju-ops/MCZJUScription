@@ -1,5 +1,6 @@
 package com.github.mczju.mczjuscription.lobby;
 
+import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczjuops.mczjugamecore.utils.TextParser;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +20,7 @@ public final class HubSignageService {
 
     private HubSignageService() {}
 
-    public static void ensureSpawned(InscriptionHubRoom room) {
+    public static void ensureSpawned(InscriptionGameRoom room) {
         if (room == null) {
             return;
         }
@@ -41,7 +42,7 @@ public final class HubSignageService {
         }
     }
 
-    public static void despawn(InscriptionHubRoom room) {
+    public static void despawn(InscriptionGameRoom room) {
         if (room == null) {
             return;
         }
@@ -98,7 +99,7 @@ public final class HubSignageService {
         return null;
     }
 
-    private static String roomKey(InscriptionHubRoom room) {
+    private static String roomKey(InscriptionGameRoom room) {
         return room.getGameId() + "/" + room.getRoomName();
     }
 }

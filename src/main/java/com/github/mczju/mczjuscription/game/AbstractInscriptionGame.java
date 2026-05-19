@@ -10,6 +10,7 @@ import com.github.mczju.mczjuscription.game.session.MatchSetup;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
+import com.github.mczju.mczjuscription.lobby.InscriptionLeaderboards;
 import com.github.mczju.mczjuscription.lobby.InscriptionRunScoring;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.game.AbstractGame;
@@ -24,7 +25,7 @@ import java.util.UUID;
 
 /**
  * 邪恶冥刻游戏基类。
- * 2×2 变体见 {@link PlayVariant}，由 {@link com.github.mczju.mczjuscription.game.variant.VariantInscriptionGame} 子类注册。
+ * 2×2 玩法变体见 {@link PlayVariant}，由 {@link InscriptionGame} 通过参数区分（非多个 MGC gameId）。
  */
 public abstract class AbstractInscriptionGame extends AbstractGame {
 
@@ -55,7 +56,12 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
             return;
         }
 
-        InscriptionGameRoom room = (InscriptionGameRoom) getGameRoom();
+        InscriptionGameRoom room = resolveMatchRoom();
+        if (room == null) {
+            sender.error("无法开始：未找到对局场地配置。");
+            MCZJUGameCore.getGameManager().abortGame(this);
+            return;
+        }
         MatchSetup setup = buildMatchSetup(players, room);
         match = new InscriptionMatch(this, setup);
         match.life().resetForNewMatch(
@@ -128,7 +134,7 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
         }, 2L);
     }
 
-    private void recordPlayerStats(MatchSide winner) {
+    protected void recordPlayerStats(MatchSide winner) {
         for (PlayerExt playerExt : getPlayers()) {
             InscriptionPlayerData data = playerExt.getData(DATA_ID, InscriptionPlayerData.class);
             MatchSide side = match.sideFor(playerExt.player());
@@ -140,19 +146,39 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
             data.gamesPlayed += 1;
             data.setModified(true);
         }
+        InscriptionLeaderboards.refreshClearBoard();
     }
 
+    /**
+     * 默认结束并踢出 MGC 游戏；{@link InscriptionGame} 覆盖为返回 main 大厅。
+     */
     public void onMatchFinished(MatchSide winner) {
         for (ParticipantState human : match.humanParticipants()) {
-            human.player().ifPresent(ext -> {
-                MatchSide side = match.sideFor(ext.player());
-                match.feedback().announceVictory(ext, side == winner);
-            });
+            human.player()
+                    .ifPresent(
+                            ext -> {
+                                MatchSide side = match.sideFor(ext.player());
+                                match.feedback().announceVictory(ext, side == winner);
+                            });
         }
+        recordPlayerStats(winner);
         MCZJUGameCore.getGameManager().endGame(this);
     }
 
     public InscriptionMatch match() {
         return match;
+    }
+
+  private InscriptionGameRoom resolveMatchRoom() {
+        if (this instanceof InscriptionGame inscription) {
+            InscriptionGameRoom dedicated = inscription.matchRoom();
+            if (dedicated != null) {
+                return dedicated;
+            }
+        }
+        if (getGameRoom() instanceof InscriptionGameRoom room) {
+            return room;
+        }
+        return null;
     }
 }
