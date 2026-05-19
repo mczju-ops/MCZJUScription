@@ -10,6 +10,7 @@ import com.github.mczju.mczjuscription.game.session.MatchSetup;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
+import com.github.mczju.mczjuscription.lobby.InscriptionRunScoring;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.game.AbstractGame;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
@@ -133,6 +134,8 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
             MatchSide side = match.sideFor(playerExt.player());
             if (side != null && side == winner) {
                 data.wins += 1;
+                int runDifficulty = InscriptionRunScoring.computeRunDifficulty(match.setup(), data);
+                InscriptionRunScoring.recordClear(data, runDifficulty);
             }
             data.gamesPlayed += 1;
             data.setModified(true);

@@ -8,6 +8,7 @@ import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.listener.CardDropPlacementListener;
 import com.github.mczju.mczjuscription.listener.LeaveConfirmListener;
+import com.github.mczju.mczjuscription.lobby.HubZoneListener;
 import com.github.mczju.mczjuscription.listener.MatchListener;
 import com.github.mczju.mczjuscription.menu.DeckBuilderMenu;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
@@ -34,6 +35,7 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MatchListener(), this);
         getServer().getPluginManager().registerEvents(new CardDropPlacementListener(), this);
         getServer().getPluginManager().registerEvents(new LeaveConfirmListener(), this);
+        getServer().getPluginManager().registerEvents(new HubZoneListener(), this);
 
         PluginCommand isc = getCommand("isc");
         if (isc != null) {

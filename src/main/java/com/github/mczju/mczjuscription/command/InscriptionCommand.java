@@ -8,7 +8,9 @@ import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.data.CardDesignerSession;
 import com.github.mczju.mczjuscription.menu.CardDesignerMenu;
+import com.github.mczju.mczjuscription.lobby.InscriptionHubGame;
 import com.github.mczju.mczjuscription.menu.DeckBuilderMenu;
+import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -30,7 +32,7 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("用法: /isc <arena|deck|carddesign|cardname>");
+            sender.sendMessage("用法: /isc <hub|arena|deck|carddesign|cardname>");
             return true;
         }
         if ("carddesign".equalsIgnoreCase(args[0])) {
@@ -53,6 +55,10 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             String name = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
             CardDesignerSession.of(player.getUniqueId()).setDisplayName(name);
             player.sendMessage("§a卡牌名称已设为: §f" + name);
+            return true;
+        }
+        if ("hub".equalsIgnoreCase(args[0])) {
+            MCZJUGameCore.getGameManager().joinGame(new PlayerExt(player), InscriptionHubGame.GAME_ID);
             return true;
         }
         if ("deck".equalsIgnoreCase(args[0])) {
@@ -86,14 +92,14 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             }
             return true;
         }
-        sender.sendMessage("未知子命令。可用: arena, deck");
+        sender.sendMessage("未知子命令。可用: hub, arena, deck, carddesign, cardname");
         return true;
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            List<String> options = new ArrayList<>(List.of("arena", "deck", "carddesign", "cardname"));
+            List<String> options = new ArrayList<>(List.of("hub", "arena", "deck", "carddesign", "cardname"));
             String prefix = args[0].toLowerCase();
             return options.stream().filter(s -> s.startsWith(prefix)).toList();
         }

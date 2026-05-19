@@ -18,3 +18,6 @@ permissions:
   inscription.admin:
     description: 管理指令
     default: op
+  inscription.hub:
+    description: 邪恶冥刻等待大厅交互
+    default: true

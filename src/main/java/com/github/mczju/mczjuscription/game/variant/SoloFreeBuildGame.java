@@ -26,13 +26,13 @@ public final class SoloFreeBuildGame extends VariantInscriptionGame {
     @Override
     public GameMeta getGameMeta() {
         return GameMeta.builder()
-                .displayName("<dark_red>邪恶冥刻")
+                .displayName("<dark_gray>邪恶冥刻 · 单人构牌")
                 .icon(Material.CANDLE)
                 .author("<green>MCZJU")
                 .description(List.of(
-                        "<gray>单人 PvE",
-                        "<gray>自由构牌 · /isc deck 编辑",
-                        "<gray>抽牌后出牌，敲钟战斗"
+                        "<gray>请从大厅 <white>inscription_hub</white> 单人座进入",
+                        "<gray>调试：可直接 join 本 ID",
+                        "<gray>自由构牌 · 敲钟战斗"
                 ))
                 .build();
     }

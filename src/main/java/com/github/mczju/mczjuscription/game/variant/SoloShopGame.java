@@ -26,13 +26,13 @@ public final class SoloShopGame extends VariantInscriptionGame {
     @Override
     public GameMeta getGameMeta() {
         return GameMeta.builder()
-                .displayName("<dark_red>邪恶冥刻 <gold>(商店)")
+                .displayName("<dark_gray>邪恶冥刻 · 单人商店")
                 .icon(Material.EMERALD)
                 .author("<green>MCZJU")
                 .description(List.of(
-                        "<gray>单人 PvE · 推荐试玩",
-                        "<gold>每回合商店购卡（开局 3 骨币）",
-                        "<gray>献祭获腐肉，敲钟进入战斗"
+                        "<gray>请从大厅单人座进入",
+                        "<gold>每回合商店购卡",
+                        "<gray>调试：可直接 join"
                 ))
                 .build();
     }

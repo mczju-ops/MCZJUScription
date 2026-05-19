@@ -1,0 +1,87 @@
+{
+  "gameId": "inscription_hub",
+  "roomName": "main",
+  "spawnAt": {
+    "world": "world",
+    "x": 0.5,
+    "y": 64.0,
+    "z": 0.5,
+    "yaw": 0.0,
+    "pitch": 0.0
+  },
+  "deckLecternAt": {
+    "world": "world",
+    "x": 5.0,
+    "y": 64.0,
+    "z": 0.0
+  },
+  "blessingAt": {
+    "world": "world",
+    "x": -3.0,
+    "y": 64.0,
+    "z": 2.0
+  },
+  "curseSelectAt": {
+    "world": "world",
+    "x": -3.0,
+    "y": 64.0,
+    "z": -2.0
+  },
+  "leaderboardAt": {
+    "world": "world",
+    "x": 3.0,
+    "y": 64.0,
+    "z": 3.0
+  },
+  "soloSeat0": {
+    "world": "world",
+    "x": 8.5,
+    "y": 64.0,
+    "z": 0.5,
+    "yaw": -90.0,
+    "pitch": 0.0
+  },
+  "duelSeat0": {
+    "world": "world",
+    "x": -8.5,
+    "y": 64.0,
+    "z": 0.5,
+    "yaw": 90.0,
+    "pitch": 0.0
+  },
+  "signAt0": {
+    "world": "world",
+    "x": 5.5,
+    "y": 66.0,
+    "z": 0.5
+  },
+  "signText0": "<gold>选配卡组</gold>\n<gray>讲台右键",
+  "signAt1": {
+    "world": "world",
+    "x": -3.5,
+    "y": 66.0,
+    "z": 2.5
+  },
+  "signText1": "<light_purple>赐福</light_purple>\n<gray>即将推出",
+  "signAt2": {
+    "world": "world",
+    "x": -3.5,
+    "y": 66.0,
+    "z": -2.5
+  },
+  "signText2": "<dark_red>诅咒</dark_red>\n<gray>右键选择",
+  "signAt3": {
+    "world": "world",
+    "x": 8.5,
+    "y": 66.0,
+    "z": 0.5
+  },
+  "signText3": "<aqua>单人</aqua>\n<gray>选模式开局",
+  "signAt4": {
+    "world": "world",
+    "x": -8.5,
+    "y": 66.0,
+    "z": 0.5
+  },
+  "signText4": "<gold>双人</gold>\n<gray>组队 2 人"
+}
