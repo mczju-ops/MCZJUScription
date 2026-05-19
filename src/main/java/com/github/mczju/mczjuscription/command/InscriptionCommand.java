@@ -6,6 +6,8 @@ import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
 import com.github.mczju.mczjuscription.game.InscriptionGameAccess;
 import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
+import com.github.mczju.mczjuscription.data.CardDesignerSession;
+import com.github.mczju.mczjuscription.menu.CardDesignerMenu;
 import com.github.mczju.mczjuscription.menu.DeckBuilderMenu;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
 import org.bukkit.command.Command;
@@ -28,7 +30,29 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("用法: /isc <arena|deck>");
+            sender.sendMessage("用法: /isc <arena|deck|carddesign|cardname>");
+            return true;
+        }
+        if ("carddesign".equalsIgnoreCase(args[0])) {
+            if (!player.hasPermission("inscription.admin")) {
+                player.sendMessage("你没有卡牌设计权限。");
+                return true;
+            }
+            new CardDesignerMenu(player, new Object[0]).open();
+            return true;
+        }
+        if ("cardname".equalsIgnoreCase(args[0])) {
+            if (!player.hasPermission("inscription.admin")) {
+                player.sendMessage("你没有卡牌设计权限。");
+                return true;
+            }
+            if (args.length < 2) {
+                player.sendMessage("用法: /isc cardname <名称>");
+                return true;
+            }
+            String name = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+            CardDesignerSession.of(player.getUniqueId()).setDisplayName(name);
+            player.sendMessage("§a卡牌名称已设为: §f" + name);
             return true;
         }
         if ("deck".equalsIgnoreCase(args[0])) {
@@ -69,7 +93,7 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            List<String> options = new ArrayList<>(List.of("arena", "deck"));
+            List<String> options = new ArrayList<>(List.of("arena", "deck", "carddesign", "cardname"));
             String prefix = args[0].toLowerCase();
             return options.stream().filter(s -> s.startsWith(prefix)).toList();
         }

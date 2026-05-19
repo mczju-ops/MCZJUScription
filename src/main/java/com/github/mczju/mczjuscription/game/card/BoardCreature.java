@@ -2,117 +2,157 @@ package com.github.mczju.mczjuscription.game.card;
 
 import com.github.mczju.mczjuscription.game.board.BoardSlot;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
-
+import com.github.mczju.mczjuscription.game.sigil.SigilId;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 public final class BoardCreature {
 
-    private final UUID instanceId = UUID.randomUUID();
-    private final CardId cardId;
-    private final MatchSide owner;
-    private BoardSlot slot;
-    private int health;
-    private int powerModifier;
-    private String displayNameOverride;
-    private boolean maturedFromFledgling;
-    private UUID entityId;
-    private UUID displayEntityId;
+  private final UUID instanceId = UUID.randomUUID();
+  private final String templateId;
+  private final MatchSide owner;
+  private BoardSlot slot;
+  private int health;
+  private int powerModifier;
+  private String displayNameOverride;
+  private boolean maturedFromFledgling;
+  private UUID entityId;
+  private UUID displayEntityId;
+  private final Set<SigilId> bonusSigils = EnumSet.noneOf(SigilId.class);
 
-    public BoardCreature(CardId cardId, MatchSide owner) {
-        this.cardId = cardId;
-        this.owner = owner;
-        this.health = CardRegistry.get(cardId).health();
-    }
+  public BoardCreature(String templateId, MatchSide owner) {
+    this.templateId = templateId;
+    this.owner = owner;
+    this.health = CardCatalog.require(templateId).health();
+  }
 
-    public String displayName() {
-        return displayNameOverride != null ? displayNameOverride : definition().displayName();
-    }
+  public BoardCreature(CardId cardId, MatchSide owner) {
+    this(cardId.name(), owner);
+  }
 
-    public boolean hasMaturedFromFledgling() {
-        return maturedFromFledgling;
-    }
+  public String displayName() {
+    return displayNameOverride != null ? displayNameOverride : template().displayName();
+  }
 
-    /** 被附加幼雏的通用成长：+1/+1，名称变为「长老xx」。 */
-    public void applyElderForm() {
-        if (maturedFromFledgling) return;
-        maturedFromFledgling = true;
-        displayNameOverride = "长老" + definition().displayName();
-        modifyPower(1);
-        health += 1;
-    }
+  public boolean hasMaturedFromFledgling() {
+    return maturedFromFledgling;
+  }
 
-    public UUID instanceId() {
-        return instanceId;
-    }
+  public void applyElderForm() {
+    if (maturedFromFledgling) return;
+    maturedFromFledgling = true;
+    displayNameOverride = "长老" + template().displayName();
+    modifyPower(1);
+    health += 1;
+  }
 
-    public CardId cardId() {
-        return cardId;
-    }
+  public UUID instanceId() {
+    return instanceId;
+  }
 
-    public CardDefinition definition() {
-        return CardRegistry.get(cardId);
-    }
+  public String templateId() {
+    return templateId;
+  }
 
-    public MatchSide owner() {
-        return owner;
+  public CardId cardId() {
+    try {
+      return CardId.valueOf(templateId);
+    } catch (IllegalArgumentException e) {
+      return null;
     }
+  }
 
-    public BoardSlot slot() {
-        return slot;
-    }
+  public CardTemplate template() {
+    return CardCatalog.require(templateId);
+  }
 
-    public void bind(BoardSlot slot) {
-        this.slot = slot;
-        slot.setCreature(this);
-    }
+  public CardDefinition definition() {
+    return template().toDefinition();
+  }
 
-    public int currentPower() {
-        return Math.max(0, definition().power() + powerModifier);
-    }
+  public MatchSide owner() {
+    return owner;
+  }
 
-    public int currentAttack() {
-        return currentPower();
-    }
+  public BoardSlot slot() {
+    return slot;
+  }
 
-    public int health() {
-        return health;
-    }
+  public void bind(BoardSlot slot) {
+    this.slot = slot;
+    slot.setCreature(this);
+  }
 
-    public void modifyPower(int delta) {
-        powerModifier += delta;
-    }
+  public int currentPower() {
+    return Math.max(0, template().power() + powerModifier);
+  }
 
-    public UUID entityId() {
-        return entityId;
-    }
+  public int currentAttack() {
+    return currentPower();
+  }
 
-    public UUID displayEntityId() {
-        return displayEntityId;
-    }
+  public int health() {
+    return health;
+  }
 
-    public void bindEntity(UUID entityId, UUID displayEntityId) {
-        this.entityId = entityId;
-        this.displayEntityId = displayEntityId;
-    }
+  public void modifyPower(int delta) {
+    powerModifier += delta;
+  }
 
-    public void clearEntityRefs() {
-        this.entityId = null;
-        this.displayEntityId = null;
-    }
+  public UUID entityId() {
+    return entityId;
+  }
 
-    public void damage(int amount) {
-        health -= amount;
-        com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
-    }
+  public UUID displayEntityId() {
+    return displayEntityId;
+  }
 
-    public boolean isDead() {
-        return health <= 0;
-    }
+  public void bindEntity(UUID entityId, UUID displayEntityId) {
+    this.entityId = entityId;
+    this.displayEntityId = displayEntityId;
+  }
 
-    public boolean hasSigil(com.github.mczju.mczjuscription.game.sigil.SigilId sigil) {
-        if (maturedFromFledgling && sigil == com.github.mczju.mczjuscription.game.sigil.SigilId.FLEDGLING) {
-            return false;
-        }
-        return definition().hasSigil(sigil);
+  public void clearEntityRefs() {
+    this.entityId = null;
+    this.displayEntityId = null;
+  }
+
+  public void damage(int amount) {
+    health -= amount;
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+  }
+
+  public boolean isDead() {
+    return health <= 0;
+  }
+
+  public void addBonusSigil(SigilId sigil) {
+    if (!SigilRules.canAdd(activeSigils(), sigil)) {
+      return;
     }
+    bonusSigils.add(sigil);
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+  }
+
+  public Set<SigilId> activeSigils() {
+    if (template().sigils().isEmpty() && bonusSigils.isEmpty()) {
+      return Set.of();
+    }
+    Set<SigilId> out = EnumSet.noneOf(SigilId.class);
+    out.addAll(template().sigils());
+    out.addAll(bonusSigils);
+    if (maturedFromFledgling) {
+      out.remove(SigilId.FLEDGLING);
+    }
+    return Collections.unmodifiableSet(out);
+  }
+
+  public boolean hasSigil(SigilId sigil) {
+    if (maturedFromFledgling && sigil == SigilId.FLEDGLING) {
+      return false;
+    }
+    return template().hasSigil(sigil) || bonusSigils.contains(sigil);
+  }
 }

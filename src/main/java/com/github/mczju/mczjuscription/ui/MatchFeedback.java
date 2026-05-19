@@ -38,6 +38,10 @@ public final class MatchFeedback {
         forEachHuman(ext -> ext.actionBarSender().info(miniMessage));
     }
 
+    public void announceInfo(String miniMessage) {
+        chatAll(miniMessage);
+    }
+
     private void chatAll(String miniMessage) {
         forEachHuman(ext -> ext.sender().info(miniMessage));
     }

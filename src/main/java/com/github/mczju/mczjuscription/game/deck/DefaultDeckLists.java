@@ -1,33 +1,38 @@
 package com.github.mczju.mczjuscription.game.deck;
 
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardId;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public final class DefaultDeckLists {
 
-    private DefaultDeckLists() {}
+  private DefaultDeckLists() {}
 
-    public static List<CardId> starterFreeBuildDeck() {
-        return List.of(
-                CardId.WOLF,
-                CardId.WOLF,
-                CardId.RABBIT,
-                CardId.BEE,
-                CardId.WOLF_CUB
-        );
-    }
+  public static List<String> starterFreeBuildDeck() {
+    return List.of(
+        CardId.WOLF.name(),
+        CardId.WOLF.name(),
+        CardId.RABBIT.name(),
+        CardId.BEE.name(),
+        CardId.WOLF_CUB.name());
+  }
 
-    public static List<CardId> parseDeck(List<String> raw) {
-        List<CardId> deck = new ArrayList<>();
-        if (raw == null) return deck;
-        for (String name : raw) {
-            try {
-                deck.add(CardId.valueOf(name));
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        return deck;
+  public static List<String> parseDeck(List<String> raw) {
+    List<String> deck = new ArrayList<>();
+    if (raw == null) return deck;
+    for (String name : raw) {
+      if (name == null || name.isBlank()) continue;
+      if (CardCatalog.exists(name)) {
+        deck.add(name);
+        continue;
+      }
+      try {
+        CardId id = CardId.valueOf(name.trim().toUpperCase());
+        deck.add(id.name());
+      } catch (IllegalArgumentException ignored) {
+      }
     }
+    return deck;
+  }
 }

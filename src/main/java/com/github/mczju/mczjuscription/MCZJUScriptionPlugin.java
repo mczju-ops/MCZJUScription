@@ -10,6 +10,7 @@ import com.github.mczju.mczjuscription.listener.CardDropPlacementListener;
 import com.github.mczju.mczjuscription.listener.LeaveConfirmListener;
 import com.github.mczju.mczjuscription.listener.MatchListener;
 import com.github.mczju.mczjuscription.menu.DeckBuilderMenu;
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.util.InscriptionKeys;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.menu.MenuFacade;
@@ -24,6 +25,7 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         InscriptionKeys.init(this);
+        CardCatalog.init(this);
         InscriptionItems.registerAll();
         MenuFacade.registerMenu("inscription_deck", DeckBuilderMenu.class);
         getLogger().info("构牌菜单已注册 (inscription_deck)，版本 " + getDescription().getVersion());

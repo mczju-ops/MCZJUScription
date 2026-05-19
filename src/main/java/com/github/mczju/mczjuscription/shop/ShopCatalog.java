@@ -17,6 +17,29 @@ public final class ShopCatalog {
         BONE_PRICES.put(CardId.WOLF_CUB, 2);
         BONE_PRICES.put(CardId.WOLF, 3);
         BONE_PRICES.put(CardId.BONE_LORD, 6);
+        BONE_PRICES.put(CardId.HARE, 1);
+        BONE_PRICES.put(CardId.GUARDIAN, 3);
+        BONE_PRICES.put(CardId.MOLE, 2);
+        BONE_PRICES.put(CardId.GECKO, 2);
+        BONE_PRICES.put(CardId.SKUNK, 2);
+        BONE_PRICES.put(CardId.COYOTE, 3);
+        BONE_PRICES.put(CardId.FROG, 2);
+        BONE_PRICES.put(CardId.BAT, 2);
+        BONE_PRICES.put(CardId.SHREW, 1);
+        BONE_PRICES.put(CardId.MANTIS, 3);
+        BONE_PRICES.put(CardId.BEAVER, 3);
+        BONE_PRICES.put(CardId.GRIZZLY, 4);
+        BONE_PRICES.put(CardId.GOAT, 2);
+        BONE_PRICES.put(CardId.COCKROACH, 2);
+        BONE_PRICES.put(CardId.MAGPIE, 2);
+        BONE_PRICES.put(CardId.ADDER, 3);
+        BONE_PRICES.put(CardId.BULL, 3);
+        BONE_PRICES.put(CardId.PACK_RAT, 3);
+        BONE_PRICES.put(CardId.GHOUL, 4);
+        BONE_PRICES.put(CardId.AMALGAM, 4);
+        BONE_PRICES.put(CardId.CAT, 2);
+        BONE_PRICES.put(CardId.STUMP, 2);
+        BONE_PRICES.put(CardId.BELL_SHEEP, 2);
     }
 
     private ShopCatalog() {}

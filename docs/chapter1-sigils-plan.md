@@ -1,7 +1,7 @@
 # 邪恶冥刻 · 第一章印记实现计划
 
 > 文档版本：与代码库 `MCZJUScription` 当前结构对齐（`SigilId` / `SigilRegistry` / `CombatResolver` / `BreedingTracker`）。  
-> **本文档仅作规划，不包含实现代码。**
+> 实现进度见 §2 状态列；代码以 `SigilRegistry` / `CombatModifiers` / `OnPlayEffects` 为准。
 
 ---
 
@@ -28,12 +28,12 @@
 | 骨皇 | `BONE_ROYALTY` | `SigilRegistry` · `ON_DEATH` | 死亡获得 4 骨（非 +3） |
 | 繁殖 | `BREEDING` | `BreedingTracker` · `ON_TURN_END` | 战斗开始时已在场，回合末存活则入手同卡 |
 | 幼雏 | `FLEDGLING` | `FledglingGrowth` · `ON_TURN_END` | 狼崽→狼；无原生表则「长老」+1/+1 |
-| 空袭 | `AIR_STRIKE` | `CombatResolver` 硬编码 | 未走 Registry |
-| 水袭 | `WATER_STRIKE` | `CombatResolver` 硬编码 | 潜水时跳过对位，直击持牌人 |
-| 死神之触 | `TOUCH_OF_DEATH` | `CombatResolver` 硬编码 | 造成伤害即击杀 |
-| 臭臭 | `STINKY` | `computeAttack` 硬编码 | 对阵时攻击方 -1 力 |
-| 优质祭品 | `QUALITY_SACRIFICE` | `sacrifice()` 硬编码 | 献祭计 3 点腐肉 |
-| 生生不息 | `ETERNAL_LIFE` | `sacrifice()` 硬编码 | **当前为回手牌，与原版「献祭不死亡」不一致** |
+| 空袭 | `AIR_STRIKE` | `CombatResolver` + `CombatModifiers` | 蜜蜂卡已绑定 |
+| 水袭 | `WATER_STRIKE` | `CombatModifiers.isSubmerged` | 敌方回合潜水直击 |
+| 死神之触 | `TOUCH_OF_DEATH` | `CombatModifiers.canDeathtouchKill` | 磐石免疫 |
+| 臭臭 | `STINKY` | `CombatModifiers.effectiveAttack` | 对阵 -1 力 |
+| 优质祭品 | `QUALITY_SACRIFICE` | `sacrifice()` | 献祭计 3 点腐肉 |
+| 生生不息 | `ETERNAL_LIFE` | `sacrifice()` | **献祭后留场（已按 §7 定稿）** |
 
 ### 2.2 已有枚举、未接 Handler
 
@@ -65,39 +65,39 @@
 
 | # | 中文名 | 原版 Ability 参考 | 建议 SigilId | 建议触发 | 状态 | 分期 |
 |---|--------|-------------------|--------------|----------|------|------|
-| 1 | 兔穴 | drawrabbits | `RABBIT_HOLE` | `ON_PLAY` | 枚举有，无 Handler | P1 |
-| 2 | 内心之蜂 | beesonhit | `BEE_STING` | `ON_ATTACKED` | 未实现 | P1 |
-| 3 | 冲刺能手 | strafe | `RUSH_LEFT` / `RUSH_RIGHT` | `ON_TURN_END` | 枚举有，无位移 | P3 |
+| 1 | 兔穴 | drawrabbits | `RABBIT_HOLE` | `ON_PLAY` | **已实现** | P1 |
+| 2 | 内心之蜂 | beesonhit | `BEE_STING` | `ON_ATTACKED` | **已实现** | P1 |
+| 3 | 冲刺能手 | strafe | `RUSH_LEFT` / `RUSH_RIGHT` | `ON_TURN_END` | **已实现**（`BoardShift`） | P3 |
 | 4 | 死神之触 | deathtouch | `TOUCH_OF_DEATH` | 战斗命中 | 硬编码 | P2 |
 | 5 | 幼雏 | evolve | `FLEDGLING` | `ON_TURN_END` | **已实现** | — |
-| 6 | 筑坝师 | createdams | `DAM_BUILDER` | `ON_PLAY` | 未实现 | P1 |
-| 7 | 囤积狂 | tutor | `TUTOR` | `ON_PLAY` | 需检索 UI | P4 |
-| 8 | 钻地龙 | whackamole | `WHACK_A_MOLE` | `PRE_COMBAT` | 未实现 | P3 |
-| 9 | 丰产之巢 | drawcopy | `COPY_ON_PLAY` | `ON_PLAY` | 未实现 | P1 |
-| 10 | 断尾求生 | tailonhit | `TAIL_ON_HIT` | `PRE_COMBAT` / 受击 | 未实现 | P3 |
-| 11 | 食尸鬼 | corpseeater | `CORPSE_EATER` | 战斗阵亡 | 未实现 | P4 |
+| 6 | 筑坝师 | createdams | `DAM_BUILDER` | `ON_PLAY` | **已实现**（`DAM_TOKEN` 0/2） | P1 |
+| 7 | 囤积狂 | tutor | `TUTOR` | `ON_PLAY` | **已实现**（顶 3 选 1 菜单） | P4 |
+| 8 | 钻地龙 | whackamole | `WHACK_A_MOLE` | `PRE_COMBAT` | **已实现** | P3 |
+| 9 | 丰产之巢 | drawcopy | `COPY_ON_PLAY` | `ON_PLAY` | **已实现** | P1 |
+| 10 | 断尾求生 | tailonhit | `TAIL_ON_HIT` | `PRE_COMBAT` | **已实现** | P3 |
+| 11 | 食尸鬼 | corpseeater | `CORPSE_EATER` | 战斗阵亡 | **已实现** | P4 |
 | 12 | 骨皇 | quadruplebones | `BONE_ROYALTY` | `ON_DEATH` | **已实现** | — |
 | 13 | 水袭 | submerge | `WATER_STRIKE` | 敌方回合战斗 | 部分硬编码 | P2 |
-| 14 | 不死之虫 | drawcopyondeath | `COPY_ON_DEATH` | `ON_DEATH` | 未实现 | P1 |
+| 14 | 不死之虫 | drawcopyondeath | `COPY_ON_DEATH` | `ON_DEATH` | **已实现** | P1 |
 | 15 | 尖刺铠甲 | sharp | `SPIKY_ARMOR` | `ON_ATTACKED` | **已实现** | — |
-| 16 | 蛮力冲撞 | strafepush | `RUSH_PUSH` | `ON_TURN_END` | 未实现 | P3 |
-| 17 | 蚁后 | drawant | `ANT_QUEEN` | `ON_PLAY` | 未实现 | P1 |
-| 18 | 守护者 | guarddog | `GUARD_DOG` | 战前 | 未实现 | P3 |
+| 16 | 蛮力冲撞 | strafepush | `RUSH_PUSH` | 位移附带 | **已实现**（`BoardShift` 推挤） | P3 |
+| 17 | 蚁后 | drawant | `ANT_QUEEN` | `ON_PLAY` | **已实现**（`ANT` 卡） | P1 |
+| 18 | 守护者 | guarddog | `GUARD_DOG` | `PRE_COMBAT` | **已实现** | P3 |
 | 19 | 空袭 | flying | `AIR_STRIKE` | 战斗目标 | 硬编码 | P2 |
-| 20 | 生生不息 | sacrificial | `ETERNAL_LIFE` | `ON_SACRIFICE` | 逻辑待统一 | P2 |
+| 20 | 生生不息 | sacrificial | `ETERNAL_LIFE` | `ON_SACRIFICE` | **已实现**（献祭留场） | P2 |
 | 21 | 厌恶情绪 | preventattack | `PREVENT_ATTACK` | 战前 | 未实现 | P2 |
 | 22 | 优质祭品 | tripleblood | `QUALITY_SACRIFICE` | 献祭 | 硬编码 | P2 |
 | 23 | 高跳 | reach | `HIGH_JUMP` | 战前拦截 | 枚举有 | P2 |
 | 24 | 兵分两路 | splitstrike | `SPLIT_STRIKE` | `ON_COMBAT_ATTACK` | 未实现 | P2 |
 | 25 | 兵分三路 | tristrike | `TRI_STRIKE` | `ON_COMBAT_ATTACK` | 未实现 | P2 |
-| 26 | 冰封禁锢 | icecube | `ICY_ENTOMB` | `ON_DEATH` | 占位，待重做 | P1 |
+| 26 | 冰封禁锢 | icecube | `ICY_ENTOMB` | `ON_DEATH` | **已实现**（`IcyEntombRelease`） | P1 |
 | 27 | 道具商 | randomconsumable | `ITEM_VENDOR` | `ON_PLAY` | 无道具系统 | 暂缓 |
-| 28 | 铁兽夹 | steeltrap | `STEEL_TRAP` | `ON_DEATH` | 未实现 | P1 |
-| 29 | 无形之物 | randomability | `RANDOM_SIGIL` | `ON_DRAW` | 需运行时改印记 | P4 |
+| 28 | 铁兽夹 | steeltrap | `STEEL_TRAP` | `ON_DEATH` | **已实现** | P1 |
+| 29 | 无形之物 | randomability | `RANDOM_SIGIL` | `ON_PLAY` | **已实现**（出牌时随机附加印记） | P4 |
 | 30 | 潮汐锁定 | squirrelorbit | `ORBIT` | `ON_TURN_START` | 未实现 | P4 |
 | 31 | 全向打击 | allstrike | `ALL_STRIKE` | `ON_COMBAT_ATTACK` | 未实现 | P2 |
 | 32 | 领袖力量 | buffneighbours | `LEADER_POWER` | `AURA` | 枚举有 | P2 |
-| 33 | 鸣钟人 | createbells | `BELL_RINGER` | `ON_PLAY` | 未实现 | P1 |
+| 33 | 鸣钟人 | createbells | `BELL_RINGER` | `ON_PLAY` | **已实现** | P1 |
 | 34 | 臭臭 | debuffenemy | `STINKY` | `AURA` / 对阵 | 部分硬编码 | P2 |
 | 35 | 磐石之身 | madeofstone | `ROCK_BODY` | 被动免疫 | 枚举有 | P2 |
 

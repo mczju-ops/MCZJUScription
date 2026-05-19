@@ -29,7 +29,7 @@ public final class EnemyPlanner {
             return;
         }
         BoardSlot preview = previewRow[slotIndex];
-        BoardCreature creature = new BoardCreature(pickCard(), MatchSide.ENEMY);
+        BoardCreature creature = new BoardCreature(pickCard().name(), MatchSide.ENEMY);
         creature.bind(preview);
         match.spawnCreatureEntity(creature, com.github.mczju.mczjuscription.game.board.SlotOwner.ENEMY_PREVIEW, slotIndex);
         step++;

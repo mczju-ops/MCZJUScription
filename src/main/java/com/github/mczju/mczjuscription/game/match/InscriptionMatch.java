@@ -11,6 +11,7 @@ import com.github.mczju.mczjuscription.game.board.BoardSides;
 import com.github.mczju.mczjuscription.game.board.BoardSlot;
 import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardDefinition;
 import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.card.CardRegistry;
@@ -22,6 +23,7 @@ import com.github.mczju.mczjuscription.game.session.OpponentController;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.game.session.TurnOwnership;
 import com.github.mczju.mczjuscription.game.sigil.BreedingTracker;
+import com.github.mczju.mczjuscription.game.sigil.CorpseEaterHandler;
 import com.github.mczju.mczjuscription.game.sigil.SigilContext;
 import com.github.mczju.mczjuscription.game.sigil.SigilId;
 import com.github.mczju.mczjuscription.game.sigil.SigilRegistry;
@@ -71,6 +73,7 @@ public final class InscriptionMatch {
     private boolean matchOver;
     private MatchSide matchWinner;
     private boolean combatAnimating;
+    private UUID wanderingTraderEntityId;
 
     public InscriptionMatch(AbstractInscriptionGame game, MatchSetup setup) {
         this.game = game;
@@ -225,6 +228,14 @@ public final class InscriptionMatch {
         this.combatAnimating = combatAnimating;
     }
 
+    public UUID wanderingTraderEntityId() {
+        return wanderingTraderEntityId;
+    }
+
+    public void setWanderingTraderEntityId(UUID wanderingTraderEntityId) {
+        this.wanderingTraderEntityId = wanderingTraderEntityId;
+    }
+
     public MatchSide matchWinner() {
         return matchWinner;
     }
@@ -265,31 +276,45 @@ public final class InscriptionMatch {
         if (!turn.canDrawFromRabbitPile()) {
             return;
         }
-        grantCardToHand(side, CardId.RABBIT);
+        grantCardToHand(side, CardId.RABBIT.name());
         turn.onDrawFromRabbitPile();
     }
 
     public void grantCardToHand(MatchSide side, CardId cardId) {
-        grantCardToHandSilent(side, cardId);
+        grantCardToHand(side, cardId.name());
+    }
+
+    public void grantCardToHand(MatchSide side, String templateId) {
+        grantCardToHandSilent(side, templateId);
         syncHud();
     }
 
     public void grantCardToHandSilent(MatchSide side, CardId cardId) {
+        grantCardToHandSilent(side, cardId.name());
+    }
+
+    public void grantCardToHandSilent(MatchSide side, String templateId) {
+        CardCatalog.require(templateId);
         ParticipantState state = participant(side);
-        state.hand().add(cardId);
+        state.hand().add(templateId);
         state.player().ifPresent(ext ->
-                ext.player().getInventory().addItem(InscriptionItems.card(cardId).getItem())
+                ext.player().getInventory().addItem(InscriptionItems.card(templateId).getItem())
         );
     }
 
     public boolean playCardToSlot(CardId cardId, int slotIndex, MatchSide actingSide) {
-        return playCardToSlot(cardId, slotIndex, actingSide, null);
+        return playCardToSlot(cardId.name(), slotIndex, actingSide, null);
+    }
+
+    public boolean playCardToSlot(String templateId, int slotIndex, MatchSide actingSide) {
+        return playCardToSlot(templateId, slotIndex, actingSide, null);
     }
 
     /**
      * @param droppedItem 丢牌召唤时场上的掉落物；已从背包脱出，成功时移除该实体而非再扫背包
      */
-    public boolean playCardToSlot(CardId cardId, int slotIndex, MatchSide actingSide, org.bukkit.entity.Item droppedItem) {
+    public boolean playCardToSlot(
+            String templateId, int slotIndex, MatchSide actingSide, org.bukkit.entity.Item droppedItem) {
         if (actingSide != actingSide()) {
             feedback.actionBarWarn("<yellow>不是你的回合");
             return false;
@@ -310,22 +335,43 @@ public final class InscriptionMatch {
         BoardSlot slot = board.slot(slotOwner, slotIndex);
 
         ParticipantState state = participant(actingSide);
-        if (!state.hand().contains(cardId)) {
+        if (!state.hand().contains(templateId)) {
             return false;
         }
 
-        CardDefinition def = CardRegistry.get(cardId);
-        if (!payCost(actingSide, def)) return false;
+        var def = CardCatalog.require(templateId);
+        if (!payCost(actingSide, def.toDefinition())) return false;
 
-        state.hand().remove(cardId);
+        state.hand().remove(templateId);
         if (droppedItem != null && droppedItem.isValid()) {
             droppedItem.remove();
         } else {
-            state.player().ifPresent(ext -> removeCardItemFromInventory(ext.player(), cardId));
+            state.player().ifPresent(ext -> removeCardItemFromInventory(ext.player(), templateId));
         }
 
-        BoardCreature creature = new BoardCreature(cardId, actingSide);
+        BoardCreature creature = new BoardCreature(templateId, actingSide);
         creature.bind(slot);
+        spawnCreatureEntity(creature, slotOwner, slotIndex);
+        SigilRegistry.fire(SigilTrigger.ON_PLAY, new SigilContext(this, SigilTrigger.ON_PLAY, creature, null, 0));
+        syncHud();
+        return true;
+    }
+
+    /** 食尸鬼等：战斗中断免费落子，不检查回合阶段与费用。 */
+    public boolean forcePlayFromHand(MatchSide side, String templateId, int slotIndex) {
+        if (arena == null) return false;
+        SlotOwner slotOwner = BoardSides.toSlotOwner(side);
+        BoardSlot[] row = board.row(slotOwner);
+        if (!BoardRules.canPlaceAt(row, slotIndex)) return false;
+
+        ParticipantState state = participant(side);
+        if (!state.hand().contains(templateId)) return false;
+
+        state.hand().remove(templateId);
+        state.player().ifPresent(ext -> removeCardItemFromInventory(ext.player(), templateId));
+
+        BoardCreature creature = new BoardCreature(templateId, side);
+        creature.bind(board.slot(slotOwner, slotIndex));
         spawnCreatureEntity(creature, slotOwner, slotIndex);
         SigilRegistry.fire(SigilTrigger.ON_PLAY, new SigilContext(this, SigilTrigger.ON_PLAY, creature, null, 0));
         syncHud();
@@ -410,8 +456,8 @@ public final class InscriptionMatch {
         };
     }
 
-    private void removeCardItemFromInventory(Player bukkit, CardId cardId) {
-        String itemId = InscriptionItems.cardItemId(cardId);
+    private void removeCardItemFromInventory(Player bukkit, String templateId) {
+        String itemId = InscriptionItems.cardItemId(templateId);
         for (int i = 0; i < bukkit.getInventory().getSize(); i++) {
             if (MatchHotbar.isLockedSlot(i)) continue;
             ItemStack stack = bukkit.getInventory().getItem(i);
@@ -445,7 +491,8 @@ public final class InscriptionMatch {
         SigilRegistry.fire(SigilTrigger.ON_SACRIFICE, new SigilContext(this, SigilTrigger.ON_SACRIFICE, victim, null, 0));
 
         if (victim.hasSigil(SigilId.ETERNAL_LIFE)) {
-            grantCardToHand(actingSide, victim.cardId());
+            syncHud();
+            return;
         }
 
         removeCreatureFromBoard(victim);
@@ -455,6 +502,7 @@ public final class InscriptionMatch {
     public void killCreature(BoardCreature creature, MatchSide killer, boolean fromHammer) {
         BoardSlot slotBefore = creature.slot();
         SigilRegistry.fire(SigilTrigger.ON_DEATH, new SigilContext(this, SigilTrigger.ON_DEATH, creature, null, 0));
+        CorpseEaterHandler.tryAutoplayAfterAllyDeath(this, creature.owner());
 
         // 亡语/成长等在槽位上替换为新造物后，不得再清槽，否则会只留下漂浮文字
         if (slotBefore != null) {
@@ -482,6 +530,10 @@ public final class InscriptionMatch {
     }
 
     public void replaceWith(BoardSlot slot, CardId cardId, MatchSide owner) {
+        replaceWith(slot, cardId.name(), owner);
+    }
+
+    public void replaceWith(BoardSlot slot, String templateId, MatchSide owner) {
         if (arena != null) {
             Location loc = arena.slotLocation(slot.owner(), slot.index());
             if (loc != null) {
@@ -492,7 +544,7 @@ public final class InscriptionMatch {
             CreatureEntityService.despawn(slot.creature());
         }
         slot.clear();
-        BoardCreature replacement = new BoardCreature(cardId, owner);
+        BoardCreature replacement = new BoardCreature(templateId, owner);
         replacement.bind(slot);
         if (arena != null) {
             spawnCreatureEntity(replacement, slot.owner(), slot.index());
@@ -572,6 +624,7 @@ public final class InscriptionMatch {
             human.player().ifPresent(ext -> InscriptionItems.stripPlayerInventory(ext.player()));
         }
         despawnAllOnBoard();
+        com.github.mczju.mczjuscription.roguelike.WanderingTraderService.despawnTrader(this);
         breedingTracker.clear();
         ArenaManager.cleanupAll();
         arena = null;

@@ -12,9 +12,8 @@ import java.util.Map;
 public final class FledglingGrowth {
 
     /** 原生幼雏 → 成长形态（后续可配置扩展）。 */
-    private static final Map<CardId, CardId> NATIVE_GROWTH = Map.of(
-            CardId.WOLF_CUB, CardId.WOLF
-    );
+    private static final Map<String, String> NATIVE_GROWTH =
+            Map.of(CardId.WOLF_CUB.name(), CardId.WOLF.name());
 
     private FledglingGrowth() {}
 
@@ -24,7 +23,7 @@ public final class FledglingGrowth {
             return;
         }
 
-        CardId evolved = NATIVE_GROWTH.get(creature.cardId());
+        String evolved = NATIVE_GROWTH.get(creature.templateId());
         if (evolved != null) {
             match.replaceWith(slot, evolved, creature.owner());
             return;

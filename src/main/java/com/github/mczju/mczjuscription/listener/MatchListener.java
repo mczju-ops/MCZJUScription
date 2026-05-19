@@ -11,6 +11,7 @@ import com.github.mczju.mczjuscription.item.InscriptionCardItem;
 import com.github.mczju.mczjuscription.item.InscriptionItemUtil;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.ui.MatchHotbar;
+import com.github.mczju.mczjuscription.roguelike.WanderingTraderService;
 import com.github.mczju.mczjuscription.ui.ResourceHotbar;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
@@ -94,6 +95,13 @@ public final class MatchListener implements Listener {
 
         MatchSide side = match.sideFor(player);
         if (side == null) return;
+
+        if (match.wanderingTraderEntityId() != null
+                && event.getRightClicked().getUniqueId().equals(match.wanderingTraderEntityId())) {
+            event.setCancelled(true);
+            WanderingTraderService.tryOpenMenu(player, match);
+            return;
+        }
 
         ItemStack hand = player.getInventory().getItemInMainHand();
         if (hand == null || hand.getType().isAir()) return;

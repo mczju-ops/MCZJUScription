@@ -2,6 +2,9 @@ package com.github.mczju.mczjuscription.game.turn;
 
 import com.github.mczju.mczjuscription.game.board.PreviewAdvanceSequence;
 import com.github.mczju.mczjuscription.game.combat.CombatResolver;
+import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
+import com.github.mczju.mczjuscription.game.combat.PreCombatResolver;
+import com.github.mczju.mczjuscription.roguelike.WanderingTraderService;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
@@ -89,6 +92,7 @@ public final class TurnController {
 
     private void runCombatSequence() {
         CombatResolver resolver = new CombatResolver(match);
+        PreCombatResolver.resolve(match, MatchSide.PLAYER);
         match.setActiveCombatSide(MatchSide.PLAYER);
         resolver.resolveSideCombatAnimated(MatchSide.PLAYER, () -> {
             if (match.isMatchOver()) {
@@ -102,6 +106,7 @@ public final class TurnController {
                     return;
                 }
                 enterPhase(TurnPhase.ENEMY_COMBAT);
+                PreCombatResolver.resolve(match, MatchSide.ENEMY);
                 match.setActiveCombatSide(MatchSide.ENEMY);
                 resolver.resolveSideCombatAnimated(MatchSide.ENEMY, () -> {
                     finishCombatAnimation();
@@ -136,6 +141,12 @@ public final class TurnController {
         this.phase = next;
         if (match.isMatchOver()) {
             return;
+        }
+        if (next == TurnPhase.DRAW) {
+            InscriptionGameRoom room = (InscriptionGameRoom) match.game().getGameRoom();
+            WanderingTraderService.onTraderTurnStart(match, room);
+        } else if (next != TurnPhase.DRAW) {
+            WanderingTraderService.despawnTrader(match);
         }
         match.feedback().announcePhase(next, turnNumber);
         match.syncHud();

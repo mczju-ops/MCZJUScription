@@ -55,8 +55,8 @@ public final class BreedingTracker {
     }
 
     private static boolean hasActiveTurnEndSigil(BoardCreature creature) {
-        for (SigilId sigil : creature.definition().sigils()) {
-            if (SigilRegistry.triggerOf(sigil) == SigilTrigger.ON_TURN_END && creature.hasSigil(sigil)) {
+        for (SigilId sigil : creature.activeSigils()) {
+            if (SigilRegistry.triggerOf(sigil) == SigilTrigger.ON_TURN_END) {
                 return true;
             }
         }

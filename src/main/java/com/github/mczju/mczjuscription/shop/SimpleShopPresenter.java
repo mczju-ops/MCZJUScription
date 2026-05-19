@@ -28,8 +28,8 @@ public final class SimpleShopPresenter implements ShopPresenter {
             match.feedback().actionBarWarn("<red>骨币不足 ×%d".formatted(price));
             return false;
         }
-        match.grantCardToHandSilent(buyerSide, cardId);
-        match.participant(buyerSide).mainDeck().addLast(cardId);
+        match.grantCardToHandSilent(buyerSide, cardId.name());
+        match.participant(buyerSide).mainDeck().addLast(cardId.name());
         match.completeShopPurchase(buyerSide);
         return true;
     }

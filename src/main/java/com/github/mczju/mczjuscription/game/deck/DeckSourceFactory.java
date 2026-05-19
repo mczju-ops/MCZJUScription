@@ -24,11 +24,11 @@ public final class DeckSourceFactory {
         };
     }
 
-    private static List<CardId> resolveFreeBuildDeck(MatchParticipant participant) {
+    private static List<String> resolveFreeBuildDeck(MatchParticipant participant) {
         if (participant.player() != null) {
             InscriptionPlayerData data = participant.player().getData(
                     AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
-            List<CardId> saved = DefaultDeckLists.parseDeck(data.savedDeck);
+            List<String> saved = DefaultDeckLists.parseDeck(data.savedDeck);
             if (!saved.isEmpty()) return saved;
         }
         return DefaultDeckLists.starterFreeBuildDeck();

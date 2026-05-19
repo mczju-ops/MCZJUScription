@@ -15,6 +15,11 @@ public class InscriptionGameRoom extends JsonGameRoom {
     /** 敲钟交互点（与槽位相同：房间编辑里标定的中心坐标）。 */
     public Location clockAt;
 
+    /** 流浪商人站位（第 3、6、9… 回合出现）。 */
+    public Location traderAt;
+    /** 商人朝向（度），未设则用 {@code traderAt} 自带 yaw。 */
+    public Float traderYaw;
+
     public Location playerSlot0;
     public Location playerSlot1;
     public Location playerSlot2;

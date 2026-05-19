@@ -19,8 +19,8 @@ public final class ParticipantState {
     private final MatchParticipant participant;
     private final @Nullable DeckSource deckSource;
     private final Currency currency = new Currency();
-    private final Deque<CardId> mainDeck = new ArrayDeque<>();
-    private final List<CardId> hand = new ArrayList<>();
+    private final Deque<String> mainDeck = new ArrayDeque<>();
+    private final List<String> hand = new ArrayList<>();
 
     public ParticipantState(MatchParticipant participant, @Nullable DeckSource deckSource) {
         this.participant = participant;
@@ -43,11 +43,11 @@ public final class ParticipantState {
         return currency;
     }
 
-    public Deque<CardId> mainDeck() {
+    public Deque<String> mainDeck() {
         return mainDeck;
     }
 
-    public List<CardId> hand() {
+    public List<String> hand() {
         return hand;
     }
 
