@@ -170,9 +170,18 @@ public final class CardDesignerMenu extends Menu {
     setup();
   }
 
+  /** 父类 {@link Menu} 构造时会调用本方法，此时尚未执行 {@link #session} 赋值。 */
+  private CardDesignerSession sessionForTitle() {
+    if (session != null) {
+      return session;
+    }
+    return CardDesignerSession.of(player.player().getUniqueId());
+  }
+
   @Override
   protected String getTitle() {
-    return "卡牌设计 · " + (session.editingId() != null ? session.editingId() : "新卡");
+    String id = sessionForTitle().editingId();
+    return "卡牌设计 · " + (id != null ? id : "新卡");
   }
 
   @Override
