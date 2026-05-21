@@ -5,6 +5,7 @@ import com.github.mczju.mczjuscription.arena.ArenaManager;
 import com.github.mczju.mczjuscription.arena.BattleArena;
 import com.github.mczju.mczjuscription.game.InscriptionGameAccess;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
+import com.github.mczju.mczjuscription.game.combat.BeamTargeting;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.item.InscriptionCardItem;
@@ -85,8 +86,9 @@ public final class MatchListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onInteractEntity(PlayerInteractEntityEvent event) {
+        // PlayerInteractEntityEvent 仅在右键实体时触发
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Player player = event.getPlayer();
@@ -108,6 +110,10 @@ public final class MatchListener implements Listener {
         if (InscriptionItems.sacrificeSword().isThis(hand) || isTool(hand, InscriptionItems.sacrificeSword())) {
             event.setCancelled(true);
             BoardCreature creature = match.findCreatureByEntity(event.getRightClicked().getUniqueId());
+            if (creature != null
+                && BeamTargeting.handleSacrificeClick(match, side, creature)) {
+                return;
+            }
             if (creature != null && creature.owner() == side) {
                 int value = creature.definition().sacrificeValue();
                 if (value >= 2) {

@@ -31,6 +31,20 @@ public final class BoardShift {
     return relocate(match, creature, from, to);
   }
 
+  /** 随机移动到己方任一空位（末影人【穿梭】、旋风人【蓄风】等）。 */
+  public static boolean moveRandomEmpty(InscriptionMatch match, BoardCreature creature) {
+    BoardSlot from = creature.slot();
+    if (from == null) return false;
+    java.util.List<Integer> empty = new java.util.ArrayList<>();
+    BoardSlot[] row = match.board().row(from.owner());
+    for (int i = 0; i < BoardSlot.SLOT_COUNT; i++) {
+      if (row[i].isEmpty()) empty.add(i);
+    }
+    if (empty.isEmpty()) return false;
+    int target = empty.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(empty.size()));
+    return moveToIndex(match, creature, target);
+  }
+
   public static boolean move(InscriptionMatch match, BoardCreature creature, int delta) {
     BoardSlot from = creature.slot();
     if (from == null || delta == 0) return false;

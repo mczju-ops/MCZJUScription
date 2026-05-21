@@ -25,12 +25,17 @@ import com.github.mczju.mczjuscription.game.session.OpponentController;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.game.session.TurnOwnership;
 import com.github.mczju.mczjuscription.game.sigil.BreedingTracker;
-import com.github.mczju.mczjuscription.game.sigil.CorpseEaterHandler;
 import com.github.mczju.mczjuscription.game.sigil.SigilContext;
 import com.github.mczju.mczjuscription.game.sigil.SigilId;
 import com.github.mczju.mczjuscription.game.sigil.SigilRegistry;
 import com.github.mczju.mczjuscription.game.sigil.SigilTrigger;
 import com.github.mczju.mczjuscription.game.deck.OpeningHandDealer;
+import com.github.mczju.mczjuscription.shop.ParticipantShopState;
+import com.github.mczju.mczjuscription.shop.ShopConfig;
+import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
+import java.util.EnumMap;
+import com.github.mczju.mczjuscription.game.combat.BeamCombatSession;
+import com.github.mczju.mczjuscription.game.combat.BeamTargeting;
 import com.github.mczju.mczjuscription.game.turn.TurnController;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.ui.MatchFeedback;
@@ -75,7 +80,9 @@ public final class InscriptionMatch {
     private boolean matchOver;
     private MatchSide matchWinner;
     private boolean combatAnimating;
+    private BeamCombatSession beamSession;
     private UUID wanderingTraderEntityId;
+    private final EnumMap<MatchSide, ParticipantShopState> shopStates = new EnumMap<>(MatchSide.class);
 
     public InscriptionMatch(AbstractInscriptionGame game, MatchSetup setup) {
         this.game = game;
@@ -103,8 +110,48 @@ public final class InscriptionMatch {
         syncHud();
     }
 
+    public ParticipantShopState shopState(MatchSide side) {
+        return shopStates.computeIfAbsent(side, s -> new ParticipantShopState());
+    }
+
+    public ShopConfig shopConfig() {
+        return ShopConfigStorage.get();
+    }
+
+    public void refreshShopOffers() {
+        if (setup.deckMode() != DeckMode.SHOP) {
+            return;
+        }
+        ShopConfig config = shopConfig();
+        for (ParticipantState human : humanParticipants()) {
+            shopState(human.side()).refreshFromConfig(config);
+        }
+    }
+
+    /** 花费腐肉解锁第 4 个刷新格（本局永久，仅解锁方生效）。 */
+    public boolean tryUnlockExtraRotatingSlot(MatchSide side) {
+        if (setup.deckMode() != DeckMode.SHOP) {
+            return false;
+        }
+        ParticipantShopState shop = shopState(side);
+        if (shop.isExtraRotatingSlotUnlocked()) {
+            feedback.actionBarWarn("<yellow>额外刷新格已解锁。");
+            return false;
+        }
+        int cost = shopConfig().extraSlotUnlockBlood();
+        if (!currency(side).trySpendBlood(cost)) {
+            feedback.actionBarWarn("<red>腐肉不足 ×%d".formatted(cost));
+            return false;
+        }
+        shop.unlockExtraRotatingSlot();
+        feedback.actionBarInfo("<green>已解锁第 4 个刷新格（本局有效）");
+        syncHud();
+        return true;
+    }
+
     public void start() {
         OpeningHandDealer.deal(this);
+        refreshShopOffers();
         turn.enterPhase(com.github.mczju.mczjuscription.game.turn.TurnPhase.DRAW);
         planOpponentPreview();
         syncHud();
@@ -244,6 +291,14 @@ public final class InscriptionMatch {
         this.combatAnimating = combatAnimating;
     }
 
+    public BeamCombatSession beamSession() {
+        return beamSession;
+    }
+
+    public void setBeamSession(BeamCombatSession beamSession) {
+        this.beamSession = beamSession;
+    }
+
     public UUID wanderingTraderEntityId() {
         return wanderingTraderEntityId;
     }
@@ -292,7 +347,7 @@ public final class InscriptionMatch {
         if (!turn.canDrawFromRabbitPile()) {
             return;
         }
-        grantCardToHand(side, CardId.RABBIT.name());
+        grantCardToHand(side, "mob_rabbit");
         turn.onDrawFromRabbitPile();
     }
 
@@ -316,6 +371,7 @@ public final class InscriptionMatch {
         state.player().ifPresent(ext ->
                 ext.player().getInventory().addItem(InscriptionItems.card(templateId).getItem())
         );
+        com.github.mczju.mczjuscription.game.sigil.SurpriseEntry.tryAutoSummon(this, side, templateId);
     }
 
     public boolean playCardToSlot(CardId cardId, int slotIndex, MatchSide actingSide) {
@@ -451,6 +507,20 @@ public final class InscriptionMatch {
         return null;
     }
 
+    public BoardCreature findCreatureByInstanceId(UUID instanceId) {
+        if (instanceId == null) return null;
+        for (SlotOwner owner : List.of(SlotOwner.PLAYER, SlotOwner.ENEMY, SlotOwner.ENEMY_PREVIEW)) {
+            for (BoardSlot slot : board.row(owner)) {
+                if (slot.isEmpty()) continue;
+                BoardCreature creature = slot.creature();
+                if (creature != null && creature.instanceId().equals(instanceId)) {
+                    return creature;
+                }
+            }
+        }
+        return null;
+    }
+
     private boolean payCost(MatchSide side, CardDefinition def) {
         Currency currency = currency(side);
         return switch (def.costType()) {
@@ -499,12 +569,15 @@ public final class InscriptionMatch {
             return;
         }
 
-        int value = victim.definition().sacrificeValue();
-        if (victim.hasSigil(SigilId.QUALITY_SACRIFICE)) {
-            value = 3;
-        }
-        currency(actingSide).addBlood(value);
         SigilRegistry.fire(SigilTrigger.ON_SACRIFICE, new SigilContext(this, SigilTrigger.ON_SACRIFICE, victim, null, 0));
+
+        if (!victim.hasSigil(SigilId.DEMON_OFFER)) {
+            int value = victim.definition().sacrificeValue();
+            if (victim.hasSigil(SigilId.QUALITY_SACRIFICE)) {
+                value = 3;
+            }
+            currency(actingSide).addBlood(value);
+        }
 
         if (victim.hasSigil(SigilId.ETERNAL_LIFE)) {
             syncHud();
@@ -518,7 +591,6 @@ public final class InscriptionMatch {
     public void killCreature(BoardCreature creature, MatchSide killer, boolean fromHammer) {
         BoardSlot slotBefore = creature.slot();
         SigilRegistry.fire(SigilTrigger.ON_DEATH, new SigilContext(this, SigilTrigger.ON_DEATH, creature, null, 0));
-        CorpseEaterHandler.tryAutoplayAfterAllyDeath(this, creature.owner());
 
         // 亡语/成长等在槽位上替换为新造物后，不得再清槽，否则会只留下漂浮文字
         if (slotBefore != null) {
@@ -588,7 +660,7 @@ public final class InscriptionMatch {
                 }
             }
         }
-        CreatureEntityService.purgeAllMatchCreatures();
+        CreatureEntityService.purgeOrphanBoardEntities();
     }
 
     public void checkRoundEnd() {
@@ -617,6 +689,7 @@ public final class InscriptionMatch {
     }
 
     private void finishMatch(MatchSide winner) {
+        BeamTargeting.cancel(this);
         matchOver = true;
         matchWinner = winner;
         combatAnimating = false;
@@ -632,6 +705,7 @@ public final class InscriptionMatch {
     }
 
     public void cleanup() {
+        BeamTargeting.cancel(this);
         combatAnimating = false;
         scalesBossBar.stop();
         for (ParticipantState human : humanParticipants()) {

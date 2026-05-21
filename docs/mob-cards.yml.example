@@ -1,0 +1,887 @@
+# MCZJUScription 生物卡牌库 · 示例
+# 复制到 plugins/MCZJUScription/cards.yml 的 cards: 节点下使用
+# 默认：costType BLOOD, cost 1（1 腐肉）
+# sigils 暂留空：待 SigilId 扩展后按 mob-cards-catalog.md §3 填写
+
+cards:
+  mob_allay:
+    displayName: "悦灵"
+    entityType: ALLAY
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_armadillo:
+    displayName: "犰狳"
+    entityType: ARMADILLO
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_axolotl:
+    displayName: "美西螈"
+    entityType: AXOLOTL
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_bat:
+    displayName: "蝙蝠"
+    entityType: BAT
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_bee:
+    displayName: "蜜蜂"
+    entityType: BEE
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_blaze:
+    displayName: "烈焰人"
+    entityType: BLAZE
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_bogged:
+    displayName: "沼骸"
+    entityType: BOGGED
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_breeze:
+    displayName: "旋风人"
+    entityType: BREEZE
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_camel:
+    displayName: "骆驼"
+    entityType: CAMEL
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_cat:
+    displayName: "猫"
+    entityType: CAT
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_cave_spider:
+    displayName: "洞穴蜘蛛"
+    entityType: CAVE_SPIDER
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_chicken:
+    displayName: "鸡"
+    entityType: CHICKEN
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_cod:
+    displayName: "鳕鱼"
+    entityType: COD
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_cow:
+    displayName: "牛"
+    entityType: COW
+    power: 0
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_creeper:
+    displayName: "苦力怕"
+    entityType: CREEPER
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_dolphin:
+    displayName: "海豚"
+    entityType: DOLPHIN
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_donkey:
+    displayName: "驴"
+    entityType: DONKEY
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_drowned:
+    displayName: "溺尸"
+    entityType: DROWNED
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_elder_guardian:
+    displayName: "远古守卫者"
+    entityType: ELDER_GUARDIAN
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_enderman:
+    displayName: "末影人"
+    entityType: ENDERMAN
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_endermite:
+    displayName: "末影螨"
+    entityType: ENDERMITE
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_evoker:
+    displayName: "唤魔者"
+    entityType: EVOKER
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_fish_dried:
+    displayName: "鱼干"
+    entityType: COD
+    power: 0
+    health: 1
+    costType: FREE
+    cost: 0
+    sacrificeValue: 0
+    sigils: []
+    builtin: false
+
+  mob_fox:
+    displayName: "狐狸"
+    entityType: FOX
+    power: 1
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_frog:
+    displayName: "青蛙"
+    entityType: FROG
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_ghast:
+    displayName: "恶魂"
+    entityType: GHAST
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_glow_squid:
+    displayName: "发光鱿鱼"
+    entityType: GLOW_SQUID
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_goat:
+    displayName: "山羊"
+    entityType: GOAT
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 3
+    sigils: []
+    builtin: false
+
+  mob_guardian:
+    displayName: "守卫者"
+    entityType: GUARDIAN
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_hoglin:
+    displayName: "疣猪兽"
+    entityType: HOGLIN
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_horse:
+    displayName: "马"
+    entityType: HORSE
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_husk:
+    displayName: "尸壳"
+    entityType: HUSK
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_iron_golem:
+    displayName: "铁傀儡"
+    entityType: IRON_GOLEM
+    power: 1
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_llama:
+    displayName: "羊驼"
+    entityType: LLAMA
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_magma_cube:
+    displayName: "大岩浆怪"
+    entityType: MAGMA_CUBE
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_magma_cube_small:
+    displayName: "小岩浆怪"
+    entityType: MAGMA_CUBE
+    power: 1
+    health: 1
+    costType: FREE
+    cost: 0
+    sacrificeValue: 0
+    sigils: []
+    builtin: false
+
+  mob_mooshroom:
+    displayName: "哞菇"
+    entityType: MUSHROOM_COW
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_mule:
+    displayName: "骡"
+    entityType: MULE
+    power: 1
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_ocelot:
+    displayName: "豹猫"
+    entityType: OCELOT
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_panda:
+    displayName: "熊猫"
+    entityType: PANDA
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_parrot:
+    displayName: "鹦鹉"
+    entityType: PARROT
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  # mob_phantom: 幻翼 — 待定，暂不写入
+
+  mob_pig:
+    displayName: "猪"
+    entityType: PIG
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_piglin:
+    displayName: "猪灵"
+    entityType: PIGLIN
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_piglin_brute:
+    displayName: "猪灵蛮兵"
+    entityType: PIGLIN_BRUTE
+    power: 5
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_pillager:
+    displayName: "掠夺者"
+    entityType: PILLAGER
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_polar_bear:
+    displayName: "北极熊"
+    entityType: POLAR_BEAR
+    power: 1
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_pufferfish:
+    displayName: "河豚"
+    entityType: PUFFERFISH
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_rabbit:
+    displayName: "兔子"
+    entityType: RABBIT
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_ravager:
+    displayName: "劫掠兽"
+    entityType: RAVAGER
+    power: 2
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_salmon:
+    displayName: "鲑鱼"
+    entityType: SALMON
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_sheep:
+    displayName: "羊"
+    entityType: SHEEP
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 3
+    sigils: []
+    builtin: false
+
+  mob_shulker:
+    displayName: "潜影贝"
+    entityType: SHULKER
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_skeleton:
+    displayName: "骷髅"
+    entityType: SKELETON
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_skeleton_horse:
+    displayName: "骷髅马"
+    entityType: SKELETON_HORSE
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_slime:
+    displayName: "大史莱姆"
+    entityType: SLIME
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_slime_small:
+    displayName: "小史莱姆"
+    entityType: SLIME
+    power: 0
+    health: 1
+    costType: FREE
+    cost: 0
+    sacrificeValue: 0
+    sigils: []
+    builtin: false
+
+  mob_sniffer:
+    displayName: "嗅探兽"
+    entityType: SNIFFER
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_snow_golem:
+    displayName: "雪傀儡"
+    entityType: SNOW_GOLEM
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_spider:
+    displayName: "蜘蛛"
+    entityType: SPIDER
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_squid:
+    displayName: "鱿鱼"
+    entityType: SQUID
+    power: 0
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_stray:
+    displayName: "流浪者"
+    entityType: STRAY
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_strider:
+    displayName: "炽足兽"
+    entityType: STRIDER
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_tadpole:
+    displayName: "蝌蚪"
+    entityType: TADPOLE
+    power: 0
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_trader_llama:
+    displayName: "行商羊驼"
+    entityType: TRADER_LLAMA
+    power: 2
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_tropical_fish:
+    displayName: "热带鱼"
+    entityType: TROPICAL_FISH
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_turtle:
+    displayName: "海龟"
+    entityType: TURTLE
+    power: 0
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_vex:
+    displayName: "恼鬼"
+    entityType: VEX
+    power: 1
+    health: 1
+    costType: FREE
+    cost: 0
+    sacrificeValue: 0
+    sigils: []
+    builtin: false
+
+  mob_villager:
+    displayName: "村民"
+    entityType: VILLAGER
+    power: 0
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_vindicator:
+    displayName: "卫道士"
+    entityType: VINDICATOR
+    power: 5
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_warden:
+    displayName: "监守者"
+    entityType: WARDEN
+    power: 3
+    health: 5
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_witch:
+    displayName: "女巫"
+    entityType: WITCH
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_wither:
+    displayName: "凋灵"
+    entityType: WITHER
+    power: 3
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_wither_skeleton:
+    displayName: "凋灵骷髅"
+    entityType: WITHER_SKELETON
+    power: 3
+    health: 4
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_wolf:
+    displayName: "狼"
+    entityType: WOLF
+    power: 2
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_wolf_cub:
+    displayName: "狼崽"
+    entityType: WOLF
+    power: 1
+    health: 1
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_zoglin:
+    displayName: "僵尸疣猪兽"
+    entityType: ZOGLIN
+    power: 1
+    health: 3
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_zombie:
+    displayName: "僵尸"
+    entityType: ZOMBIE
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_zombie_horse:
+    displayName: "僵尸马"
+    entityType: ZOMBIE_HORSE
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_zombie_villager:
+    displayName: "僵尸村民"
+    entityType: ZOMBIE_VILLAGER
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false
+
+  mob_zombified_piglin:
+    displayName: "僵尸猪灵"
+    entityType: ZOMBIFIED_PIGLIN
+    power: 1
+    health: 2
+    costType: BLOOD
+    cost: 1
+    sacrificeValue: 1
+    sigils: []
+    builtin: false

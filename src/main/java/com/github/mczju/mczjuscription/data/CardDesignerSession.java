@@ -4,7 +4,6 @@ import com.github.mczju.mczjuscription.game.card.CardTemplate;
 import com.github.mczju.mczjuscription.game.card.CostType;
 import com.github.mczju.mczjuscription.game.sigil.SigilId;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,8 +21,8 @@ public final class CardDesignerSession {
   private final List<SigilId> sigils = new ArrayList<>();
   private int power = 1;
   private int health = 1;
-  private CostType costType = CostType.BLOOD;
-  private int cost = 1;
+  private int bloodCost = 1;
+  private int boneCost = 0;
 
   public static CardDesignerSession of(UUID playerId) {
     return SESSIONS.computeIfAbsent(playerId, id -> new CardDesignerSession());
@@ -41,8 +40,16 @@ public final class CardDesignerSession {
     sigils.addAll(template.sigils());
     power = template.power();
     health = template.health();
-    costType = template.costType();
-    cost = template.cost();
+    if (template.costType() == CostType.BONES) {
+      boneCost = template.cost();
+      bloodCost = 0;
+    } else if (template.costType() == CostType.BLOOD) {
+      bloodCost = template.cost();
+      boneCost = 0;
+    } else {
+      bloodCost = 0;
+      boneCost = 0;
+    }
   }
 
   public void newCard(String id) {
@@ -52,8 +59,8 @@ public final class CardDesignerSession {
     sigils.clear();
     power = 1;
     health = 1;
-    costType = CostType.BLOOD;
-    cost = 1;
+    bloodCost = 1;
+    boneCost = 0;
   }
 
   public CardTemplate toTemplate(boolean builtin) {
@@ -62,8 +69,16 @@ public final class CardDesignerSession {
     t.setEntityType(entityType);
     t.setPower(power);
     t.setHealth(health);
-    t.setCostType(costType);
-    t.setCost(cost);
+    if (boneCost > 0) {
+      t.setCostType(CostType.BONES);
+      t.setCost(boneCost);
+    } else if (bloodCost > 0) {
+      t.setCostType(CostType.BLOOD);
+      t.setCost(bloodCost);
+    } else {
+      t.setCostType(CostType.FREE);
+      t.setCost(0);
+    }
     t.setSigils(sigils);
     t.setBuiltin(builtin);
     return t;
@@ -85,20 +100,10 @@ public final class CardDesignerSession {
     return entityType;
   }
 
-  public void cycleEntity() {
-    EntityType[] pool = {
-      EntityType.RABBIT, EntityType.WOLF, EntityType.BEE, EntityType.CHICKEN,
-      EntityType.CAT, EntityType.FROG, EntityType.BAT, EntityType.SILVERFISH,
-      EntityType.IRON_GOLEM, EntityType.ZOMBIE, EntityType.SLIME
-    };
-    int idx = 0;
-    for (int i = 0; i < pool.length; i++) {
-      if (pool[i] == entityType) {
-        idx = (i + 1) % pool.length;
-        break;
-      }
+  public void setEntityType(EntityType entityType) {
+    if (entityType != null && entityType.isAlive()) {
+      this.entityType = entityType;
     }
-    entityType = pool[idx];
   }
 
   public List<SigilId> sigils() {
@@ -133,30 +138,31 @@ public final class CardDesignerSession {
     health = Math.max(1, health + delta);
   }
 
-  public CostType costType() {
-    return costType;
+  public int bloodCost() {
+    return bloodCost;
   }
 
-  public void cycleCostType() {
-    costType =
-        switch (costType) {
-          case FREE -> CostType.BLOOD;
-          case BLOOD -> CostType.BONES;
-          case BONES -> CostType.FREE;
-        };
+  public int boneCost() {
+    return boneCost;
   }
 
-  public int cost() {
-    return cost;
+  public void addBloodCost(int delta) {
+    bloodCost = Math.max(0, bloodCost + delta);
   }
 
-  public void addCost(int delta) {
-    cost = Math.max(0, cost + delta);
+  public void addBoneCost(int delta) {
+    boneCost = Math.max(0, boneCost + delta);
+  }
+
+  public void setSigils(List<SigilId> next) {
+    sigils.clear();
+    sigils.addAll(com.github.mczju.mczjuscription.game.card.SigilRules.normalize(next));
   }
 
   public String sigilSummary() {
     if (sigils.isEmpty()) return "无";
-    return SigilNamesJoin.join(EnumSet.copyOf(sigils));
+    return SigilNamesJoin.join(
+        com.github.mczju.mczjuscription.game.card.SigilRules.asSet(sigils));
   }
 
   private static final class SigilNamesJoin {

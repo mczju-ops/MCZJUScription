@@ -24,9 +24,17 @@ public final class SigilRules {
     return List.copyOf(set);
   }
 
+  /** 将卡面印记列表转为集合；空列表安全返回空 EnumSet（不可对空集合 {@link EnumSet#copyOf}）。 */
+  public static Set<SigilId> asSet(List<SigilId> sigils) {
+    if (sigils == null || sigils.isEmpty()) {
+      return EnumSet.noneOf(SigilId.class);
+    }
+    return EnumSet.copyOf(sigils);
+  }
+
   public static boolean canAdd(Set<SigilId> current, SigilId add) {
     if (add == null) return false;
-    if (current.contains(add)) return true;
+    if (current.contains(add)) return false;
     return current.size() < MAX_PER_CARD;
   }
 

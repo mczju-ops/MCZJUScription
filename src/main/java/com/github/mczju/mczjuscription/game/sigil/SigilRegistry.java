@@ -2,14 +2,14 @@ package com.github.mczju.mczjuscription.game.sigil;
 
 import com.github.mczju.mczjuscription.game.board.BoardShift;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
-import com.github.mczju.mczjuscription.game.card.CardId;
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
-
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class SigilRegistry {
 
@@ -22,53 +22,76 @@ public final class SigilRegistry {
       }
     });
 
-    register(SigilId.BEE_STING, ctx ->
-        ctx.match().grantCardToHandSilent(ctx.source().owner(), CardId.BEE.name()));
-
     register(SigilId.BONE_ROYALTY, ctx -> ctx.match().grantBones(ctx.source().owner(), 4));
 
     register(
         SigilId.COPY_ON_DEATH,
         ctx -> ctx.match().grantCardToHandSilent(ctx.source().owner(), ctx.source().templateId()));
 
-    register(SigilId.ICY_ENTOMB, ctx -> IcyEntombRelease.release(ctx.match(), ctx.source()));
+    register(SigilId.BREEDING, ctx -> ctx.match().grantCardToHandSilent(ctx.source().owner(), ctx.source().templateId()));
+
+    register(SigilId.FLEDGLING, ctx -> EvolutionResolver.mature(ctx.match(), ctx.source()));
+
+    register(SigilId.AFFLICTION, ctx -> EvolutionResolver.mature(ctx.match(), ctx.source()));
+
+    register(SigilId.EVOKE_VEX, ctx -> BoardTokens.spawnOnAdjacentEmpty(ctx.match(), ctx.source(), "mob_vex"));
+
+    register(SigilId.RUSH_PUSH, ctx -> BoardShift.move(ctx.match(), ctx.source(), ctx.source().slot().index() > 0 ? 1 : -1));
+
+    register(SigilId.ENDER_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
+
+    register(SigilId.GUST_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
 
     register(
-        SigilId.STEEL_TRAP,
+        SigilId.INK,
         ctx -> {
-          BoardCreature opposite = BoardTokens.oppositeInLane(ctx.match().board(), ctx.source());
-          if (opposite != null && !opposite.isDead()) {
-            ctx.match().killCreature(opposite, ctx.source().owner(), false);
+          if (ctx.target() != null && ctx.damage() > 0) {
+            ctx.target().markSkipNextAttack();
           }
-          ctx.match().grantCardToHandSilent(ctx.source().owner(), CardId.PELT.name());
+        });
+
+    register(SigilId.SNIFF_STEAL, ctx -> resolveSniffSteal(ctx.match(), ctx.source()));
+
+    register(SigilId.FISH_BAIT, ctx -> ctx.match().grantCardToHandSilent(ctx.source().owner(), "mob_fish_dried"));
+
+    register(SigilId.DEMON_OFFER, ctx -> ctx.match().grantBones(ctx.source().owner(), 3));
+
+    register(
+        SigilId.FERMENT,
+        ctx -> ctx.match().currency(ctx.source().owner()).addBlood(2));
+
+    register(SigilId.TRADE, ctx -> ctx.match().grantBones(ctx.source().owner(), 1));
+
+    register(SigilId.WATER_STORE, ctx -> ctx.source().heal(1));
+
+    register(SigilId.WANDER, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
+
+    register(SigilId.SELF_DESTRUCT, ctx -> SelfDestructHandler.explode(ctx.match(), ctx.source()));
+
+    register(SigilId.SPLIT_SPAWN, ctx -> SplitSpawnDeath.spawn(ctx.match(), ctx.source()));
+
+    register(
+        SigilId.STEAL_BONE,
+        ctx -> {
+          if (ctx.target() != null && ctx.damage() > 0) {
+            ctx.match().grantBones(ctx.source().owner(), 1);
+          }
         });
 
     register(
-        SigilId.BREEDING,
-        ctx -> ctx.match().grantCardToHandSilent(ctx.source().owner(), ctx.source().templateId()));
-
-    register(SigilId.FLEDGLING, ctx -> FledglingGrowth.mature(ctx.match(), ctx.source()));
-
-    for (SigilId onPlay :
-        List.of(
-            SigilId.RABBIT_HOLE,
-            SigilId.COPY_ON_PLAY,
-            SigilId.ANT_QUEEN,
-            SigilId.DAM_BUILDER,
-            SigilId.BELL_RINGER)) {
-      register(onPlay, ctx -> OnPlayEffects.apply(ctx.match(), ctx.source(), onPlay));
-    }
-
-    register(SigilId.RUSH_LEFT, ctx -> BoardShift.move(ctx.match(), ctx.source(), -1));
-    register(SigilId.RUSH_RIGHT, ctx -> BoardShift.move(ctx.match(), ctx.source(), 1));
-
-    register(SigilId.TUTOR, ctx -> TutorEffect.open(ctx.match(), ctx.source()));
+        SigilId.WEB_WEAK,
+        ctx -> {
+          if (ctx.damage() > 0) {
+            ctx.source().modifyPower(-1);
+          }
+        });
 
     register(
-        SigilId.RANDOM_SIGIL,
+        SigilId.SLOW,
         ctx -> {
-          SigilId rolled = RandomSigilPool.roll();
-          ctx.source().addBonusSigil(rolled);
+          if (ctx.damage() > 0) {
+            ctx.source().modifyPower(-1);
+          }
         });
   }
 
@@ -89,10 +112,8 @@ public final class SigilRegistry {
 
   public static void fireOnBoard(SigilTrigger trigger, InscriptionMatch match, BoardCreature primary) {
     List<BoardCreature> all = new ArrayList<>();
-    all.addAll(
-        match.board().occupiedSlots(MatchSide.PLAYER).stream().map(s -> s.creature()).toList());
-    all.addAll(
-        match.board().occupiedSlots(MatchSide.ENEMY).stream().map(s -> s.creature()).toList());
+    all.addAll(match.board().occupiedSlots(MatchSide.PLAYER).stream().map(s -> s.creature()).toList());
+    all.addAll(match.board().occupiedSlots(MatchSide.ENEMY).stream().map(s -> s.creature()).toList());
     for (BoardCreature creature : all) {
       if (creature.activeSigils().isEmpty()) continue;
       SigilContext ctx = new SigilContext(match, trigger, creature, primary, 0);
@@ -104,34 +125,52 @@ public final class SigilRegistry {
     }
   }
 
+  /** 嗅探：从对方场上随机偷一个印记替换本卡上的嗅探。 */
+  public static void resolveSniffSteal(InscriptionMatch match, BoardCreature sniffer) {
+    if (!sniffer.hasSigil(SigilId.SNIFF_STEAL)) return;
+    MatchSide enemy = sniffer.owner().opposite();
+    List<SigilId> pool = new ArrayList<>();
+    for (var slot : match.board().occupiedSlots(enemy)) {
+      BoardCreature c = slot.creature();
+      if (c == null || c == sniffer) continue;
+      for (SigilId s : c.activeSigils()) {
+        if (s != SigilId.SNIFF_STEAL) pool.add(s);
+      }
+    }
+    if (pool.isEmpty()) return;
+    SigilId stolen = pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+    sniffer.addBonusSigil(stolen);
+    sniffer.consumeSniffSigil();
+  }
+
   public static SigilTrigger triggerOf(SigilId id) {
     return switch (id) {
-      case RABBIT_HOLE,
-          COPY_ON_PLAY,
-          ANT_QUEEN,
-          DAM_BUILDER,
-          BELL_RINGER,
-          TUTOR,
-          RANDOM_SIGIL,
-          ITEM_VENDOR ->
-          SigilTrigger.ON_PLAY;
-      case BEE_STING, SPIKY_ARMOR -> SigilTrigger.ON_ATTACKED;
-      case BONE_ROYALTY, COPY_ON_DEATH, ICY_ENTOMB, STEEL_TRAP -> SigilTrigger.ON_DEATH;
-      case BREEDING, FLEDGLING, RUSH_LEFT, RUSH_RIGHT -> SigilTrigger.ON_TURN_END;
-      case ETERNAL_LIFE, QUALITY_SACRIFICE -> SigilTrigger.ON_SACRIFICE;
-      case STINKY, LEADER_POWER, ROCK_BODY -> SigilTrigger.AURA;
+      case EVOKE_VEX, SURPRISE_ENTRY -> SigilTrigger.ON_PLAY;
+      case SPIKY_ARMOR, INK, WEB_WEAK, SLOW -> SigilTrigger.ON_ATTACKED;
+      case STEAL_BONE -> SigilTrigger.ON_COMBAT_ATTACK;
+      case BONE_ROYALTY, COPY_ON_DEATH, SELF_DESTRUCT, SPLIT_SPAWN -> SigilTrigger.ON_DEATH;
+      case BREEDING, FERMENT, TRADE, WATER_STORE, FLEDGLING, AFFLICTION, WANDER, SNIFF_STEAL ->
+          SigilTrigger.ON_TURN_END;
+      case QUALITY_SACRIFICE, DEMON_OFFER, ETERNAL_LIFE, FISH_BAIT -> SigilTrigger.ON_SACRIFICE;
+      case ENDER_SHIFT -> SigilTrigger.ON_ATTACKED;
+      case GUST_SHIFT -> SigilTrigger.ON_COMBAT_ATTACK;
+      case RUSH_PUSH -> SigilTrigger.ON_TURN_END;
+      case STINKY, STINKY_FAR, RIDING, TAUNT_AURA, SCORCH, HISS -> SigilTrigger.AURA;
       case AIR_STRIKE,
           WATER_STRIKE,
           HIGH_JUMP,
-          TOUCH_OF_DEATH,
-          PREVENT_ATTACK,
           SPLIT_STRIKE,
           TRI_STRIKE,
-          ALL_STRIKE -> SigilTrigger.SPECIAL;
-      case GUARD_DOG, WHACK_A_MOLE, TAIL_ON_HIT -> SigilTrigger.PRE_COMBAT;
-      case RUSH_PUSH -> SigilTrigger.ON_TURN_END;
-      case CORPSE_EATER -> SigilTrigger.SPECIAL;
-      case ORBIT -> SigilTrigger.ON_TURN_START;
+          ALL_STRIKE,
+          BEAM,
+          DOUBLE_STRIKE,
+          VENOM_KILL,
+          HARD_SHELL,
+          FIRST_SHIELD,
+          INTIMIDATE,
+          SONAR,
+          GUARD_DOG ->
+          SigilTrigger.SPECIAL;
     };
   }
 }

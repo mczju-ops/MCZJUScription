@@ -2,7 +2,6 @@ package com.github.mczju.mczjuscription.menu;
 
 import com.github.mczju.mczjuscription.data.InscriptionPlayerData;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.deck.DefaultDeckLists;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
@@ -38,21 +37,16 @@ public class DeckBuilderMenu extends Menu {
                 .lore(buildDeckLore())
                 .build());
 
-        CardId[] pool = {
-            CardId.RABBIT, CardId.HARE, CardId.BEE, CardId.FROG, CardId.BAT,
-            CardId.WOLF_CUB, CardId.WOLF, CardId.MANTIS, CardId.GRIZZLY, CardId.GOAT,
-            CardId.GUARDIAN, CardId.MOLE, CardId.GECKO, CardId.PACK_RAT, CardId.GHOUL,
-            CardId.AMALGAM, CardId.CHICKEN, CardId.BONE_LORD
-        };
-        for (int i = 0; i < pool.length; i++) {
-            CardId id = pool[i];
+        List<String> pool = CardCatalog.deckBuilderPool();
+        for (int i = 0; i < pool.size(); i++) {
+            String id = pool.get(i);
             int slot = 9 + i;
             if (slot >= getRows() * 9) break;
-            setSlot(slot, ItemBuilder.of(CardCatalog.require(id.name()).spawnEggMaterial())
-                    .customName("<green>+ " + CardCatalog.require(id.name()).displayName())
+            setSlot(slot, ItemBuilder.of(CardCatalog.require(id).spawnEggMaterial())
+                    .customName("<green>+ " + CardCatalog.require(id).displayName())
                     .lore(List.of("<gray>点击加入牌组"))
                     .build(), (p, e) -> {
-                editing.add(id.name());
+                editing.add(id);
                 refresh();
             });
         }

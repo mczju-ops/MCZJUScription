@@ -1,5 +1,6 @@
 package com.github.mczju.mczjuscription;
 
+import com.github.mczju.mczjuscription.bootstrap.InscriptionShutdownService;
 import com.github.mczju.mczjuscription.command.InscriptionCommand;
 import com.github.mczju.mczjuscription.data.InscriptionPlayerData;
 import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
@@ -8,7 +9,10 @@ import com.github.mczju.mczjuscription.game.InscriptionGameCoreBridge;
 import com.github.mczju.mczjuscription.game.InscriptionRoomSetup;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
+import com.github.mczju.mczjuscription.listener.CardDesignerMenuListener;
 import com.github.mczju.mczjuscription.listener.CardDropPlacementListener;
+import com.github.mczju.mczjuscription.listener.ShopAdminListener;
+import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
 import com.github.mczju.mczjuscription.listener.LeaveConfirmListener;
 import com.github.mczju.mczjuscription.lobby.HubZoneListener;
 import com.github.mczju.mczjuscription.lobby.InscriptionLeaderboards;
@@ -31,6 +35,7 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
         instance = this;
         InscriptionKeys.init(this);
         CardCatalog.init(this);
+        ShopConfigStorage.init(this);
         InscriptionItems.registerAll();
         MenuFacade.registerMenu("inscription_deck", DeckBuilderMenu.class);
         getLogger().info("构牌菜单已注册 (inscription_deck)，版本 " + getDescription().getVersion());
@@ -44,6 +49,8 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CardDropPlacementListener(), this);
         getServer().getPluginManager().registerEvents(new LeaveConfirmListener(), this);
         getServer().getPluginManager().registerEvents(new HubZoneListener(), this);
+        getServer().getPluginManager().registerEvents(new CardDesignerMenuListener(), this);
+        getServer().getPluginManager().registerEvents(new ShopAdminListener(), this);
 
         PluginCommand isc = getCommand("isc");
         if (isc != null) {
@@ -55,6 +62,9 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (MCZJUGameCore.getInstance() != null) {
+            InscriptionShutdownService.shutdown(getLogger());
+        }
         instance = null;
     }
 

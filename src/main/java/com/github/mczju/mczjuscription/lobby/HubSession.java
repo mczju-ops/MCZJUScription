@@ -1,10 +1,14 @@
 package com.github.mczju.mczjuscription.lobby;
 
 import com.github.mczju.mczjuscription.game.session.PlayVariant;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 
 /** 大厅内存状态：占座、待确认双人开局。 */
 public final class HubSession {
@@ -29,8 +33,31 @@ public final class HubSession {
     }
 
     public static void release(UUID playerId) {
+        removeMount(mountOf(playerId));
         SEATS.remove(playerId);
         PENDING_DUELS.remove(playerId);
+    }
+
+    /** 关服时移除全部座位椅与占座状态。 */
+    public static void shutdownAll() {
+        for (SeatBinding binding : new ArrayList<>(SEATS.values())) {
+            removeMount(binding.mountId());
+        }
+        SEATS.clear();
+        PENDING_DUELS.clear();
+    }
+
+    private static void removeMount(UUID mountId) {
+        if (mountId == null) {
+            return;
+        }
+        for (World world : Bukkit.getWorlds()) {
+            Entity entity = world.getEntity(mountId);
+            if (entity != null) {
+                entity.remove();
+                return;
+            }
+        }
     }
 
     public static SeatBinding seatOf(UUID playerId) {

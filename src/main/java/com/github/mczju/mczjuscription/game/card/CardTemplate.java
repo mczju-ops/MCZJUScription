@@ -23,6 +23,7 @@ public final class CardTemplate {
   private int cost;
   private int sacrificeValue;
   private List<SigilId> sigils;
+  private String evolvesTo;
   private boolean builtin;
 
   public CardTemplate(String id) {
@@ -63,8 +64,17 @@ public final class CardTemplate {
     c.cost = cost;
     c.sacrificeValue = sacrificeValue;
     c.sigils = new ArrayList<>(sigils);
+    c.evolvesTo = evolvesTo;
     c.builtin = false;
     return c;
+  }
+
+  public String evolvesTo() {
+    return evolvesTo;
+  }
+
+  public void setEvolvesTo(String evolvesTo) {
+    this.evolvesTo = evolvesTo;
   }
 
   public String id() {

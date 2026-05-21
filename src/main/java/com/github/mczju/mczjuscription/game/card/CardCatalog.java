@@ -29,7 +29,20 @@ public final class CardCatalog {
     if (!plugin.getDataFolder().exists()) {
       plugin.getDataFolder().mkdirs();
     }
+    if (!storageFile.exists()) {
+      plugin.saveResource("cards.yml", false);
+    }
     reload();
+  }
+
+  /** 构牌 / 设计器可选：所有 mob_ 主卡（排除 token）。 */
+  public static List<String> deckBuilderPool() {
+    return TEMPLATES.values().stream()
+        .map(CardTemplate::id)
+        .filter(id -> id.startsWith("mob_"))
+        .filter(id -> !id.contains("_small") && !id.equals("mob_fish_dried") && !id.equals("mob_vex"))
+        .sorted()
+        .toList();
   }
 
   public static void reload() {
@@ -106,6 +119,70 @@ public final class CardCatalog {
     return TEMPLATES.containsKey(id);
   }
 
+  /** 是否允许从设计器删除（自定义卡，或已写入 cards.yml 的内置覆盖）。 */
+  public static boolean canDelete(String id) {
+    CardTemplate t = TEMPLATES.get(id);
+    if (t == null) {
+      return false;
+    }
+    if (!isEnumBuiltinId(id)) {
+      return true;
+    }
+    return isOverriddenBuiltin(t) || isStoredInYaml(id);
+  }
+
+  /**
+   * 删除卡牌：移除自定义卡；对已覆盖的内置卡恢复为 {@link CardRegistry} 默认值。
+   *
+   * @return 操作结果
+   */
+  public static DeleteResult deleteCard(String id) {
+    CardTemplate current = TEMPLATES.get(id);
+    if (current == null) {
+      return DeleteResult.NOT_FOUND;
+    }
+    if (!isEnumBuiltinId(id)) {
+      TEMPLATES.remove(id);
+      persist();
+      return DeleteResult.REMOVED;
+    }
+    if (!isOverriddenBuiltin(current) && !isStoredInYaml(id)) {
+      return DeleteResult.BUILTIN_PROTECTED;
+    }
+    CardId builtin = CardId.valueOf(id);
+    TEMPLATES.put(id, CardTemplate.fromDefinition(builtin, CardRegistry.get(builtin)));
+    persist();
+    return DeleteResult.RESTORED_DEFAULT;
+  }
+
+  private static boolean isEnumBuiltinId(String id) {
+    try {
+      CardId.valueOf(id);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private static boolean isStoredInYaml(String id) {
+    if (storageFile == null || !storageFile.exists()) {
+      return false;
+    }
+    YamlConfiguration yaml = YamlConfiguration.loadConfiguration(storageFile);
+    return yaml.isConfigurationSection("cards." + id);
+  }
+
+  public enum DeleteResult {
+    /** 自定义卡已从库与 cards.yml 移除 */
+    REMOVED,
+    /** 内置卡覆盖已撤销，恢复默认定义 */
+    RESTORED_DEFAULT,
+    /** ID 不存在 */
+    NOT_FOUND,
+    /** 核心内置卡且无自定义覆盖，不可删 */
+    BUILTIN_PROTECTED
+  }
+
   private static void persist() {
     if (storageFile == null) return;
     YamlConfiguration out = new YamlConfiguration();
@@ -150,6 +227,9 @@ public final class CardCatalog {
         "sigils",
         t.sigils().stream().map(Enum::name).toList());
     sec.set("builtin", t.isBuiltin());
+    if (t.evolvesTo() != null && !t.evolvesTo().isBlank()) {
+      sec.set("evolvesTo", t.evolvesTo());
+    }
   }
 
   private static CardTemplate deserialize(String id, org.bukkit.configuration.ConfigurationSection sec) {
@@ -171,6 +251,7 @@ public final class CardCatalog {
     }
     t.setSigils(sigils);
     t.setBuiltin(sec.getBoolean("builtin", false));
+    t.setEvolvesTo(sec.getString("evolvesTo", null));
     return t;
   }
 }

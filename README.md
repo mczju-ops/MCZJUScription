@@ -21,7 +21,9 @@ cd ../MCZJUScription/MCZJUScription && mvn clean package -DskipTests
 - 仓库根目录 `api-overview.md` — MCZJUGameCore API 全文
 - `.cursor/skills/mczju-gamecore/` — Cursor Agent 用 MGC 开发技能
 - `docs/example-inscription_hub-main.json` — 大厅房间 `main` 配置示例
-- `docs/chapter1-sigils-plan.md` — 第一章印记实现规划
+- `docs/mob-cards-catalog.md` — 生物卡牌定稿表（攻血/印记）
+- `docs/mob-sigil-implementation-plan.md` — MC 印记体系分析与执行方案
+- `docs/mob-cards.yml.example` — 自定义卡 YAML 示例
 
 ## 房间规划（`inscription`）
 

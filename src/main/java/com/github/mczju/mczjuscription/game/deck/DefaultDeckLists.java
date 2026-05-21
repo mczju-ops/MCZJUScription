@@ -1,7 +1,6 @@
 package com.github.mczju.mczjuscription.game.deck;
 
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
-import com.github.mczju.mczjuscription.game.card.CardId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,13 +8,14 @@ public final class DefaultDeckLists {
 
   private DefaultDeckLists() {}
 
+  /** 默认自由构牌（mob 卡，已移除旧 CardId 内置十卡）。 */
   public static List<String> starterFreeBuildDeck() {
     return List.of(
-        CardId.WOLF.name(),
-        CardId.WOLF.name(),
-        CardId.RABBIT.name(),
-        CardId.BEE.name(),
-        CardId.WOLF_CUB.name());
+        "mob_wolf",
+        "mob_wolf",
+        "mob_rabbit",
+        "mob_bee",
+        "mob_wolf_cub");
   }
 
   public static List<String> parseDeck(List<String> raw) {
@@ -25,12 +25,6 @@ public final class DefaultDeckLists {
       if (name == null || name.isBlank()) continue;
       if (CardCatalog.exists(name)) {
         deck.add(name);
-        continue;
-      }
-      try {
-        CardId id = CardId.valueOf(name.trim().toUpperCase());
-        deck.add(id.name());
-      } catch (IllegalArgumentException ignored) {
       }
     }
     return deck;

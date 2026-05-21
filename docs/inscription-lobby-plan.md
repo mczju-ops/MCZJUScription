@@ -2,7 +2,7 @@
 
 > 文档版本：与 `MCZJUScription` + `MCZJUGameCore`（MGC）api-overview 对齐。  
 > 用途：作为**唯一实施清单**；按 §8 分条落实，完成后在状态列打勾。  
-> 相关：`api-overview.md`（MGC API）、`chapter1-sigils-plan.md`（对局内印记）
+> 相关：`api-overview.md`（MGC API）、`mob-cards-catalog.md`（卡牌数据）、`mob-sigil-implementation-plan.md`（印记实现）
 
 ---
 

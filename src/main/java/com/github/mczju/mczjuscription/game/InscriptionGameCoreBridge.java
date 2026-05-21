@@ -64,13 +64,33 @@ public final class InscriptionGameCoreBridge {
         }
     }
 
-    /** 进入大厅；{@code roomId} 为 {@code null} 时仅 {@link InscriptionRoomPools#HUB}。 */
+    /** 进入大厅；{@code roomId} 为 {@code null} 时默认 {@link InscriptionRoomPools#HUB}（main）。 */
     public static void joinHub(PlayerExt player) {
-        joinHub(player, null);
+        joinHub(player, InscriptionRoomPools.HUB);
     }
 
     public static void joinHub(PlayerExt player, @Nullable String roomId) {
-        joinGame(player, InscriptionGame.GAME_ID, InscriptionRoomPools.HUB_ONLY, roomId);
+        joinGame(
+                player,
+                InscriptionGame.GAME_ID,
+                InscriptionRoomPools.HUB_ONLY,
+                roomId != null ? roomId : InscriptionRoomPools.HUB);
+    }
+
+    /**
+     * 对局结束后回到 main：优先 {@code joinGameFresh} 新建/加入大厅实例，避免仍挂在 play 对局实例上。
+     */
+    public static void joinHubFresh(PlayerExt player) {
+        joinHubFresh(player, InscriptionRoomPools.HUB);
+    }
+
+    public static void joinHubFresh(PlayerExt player, @Nullable String roomId) {
+        String hubRoom = roomId != null ? roomId : InscriptionRoomPools.HUB;
+        if (joinGameFreshAvailable) {
+            joinGameFresh(player, InscriptionGame.GAME_ID, InscriptionRoomPools.HUB_ONLY, hubRoom);
+            return;
+        }
+        joinHub(player, hubRoom);
     }
 
     private static final int JOIN_MATCH_MAX_ATTEMPTS = 40;

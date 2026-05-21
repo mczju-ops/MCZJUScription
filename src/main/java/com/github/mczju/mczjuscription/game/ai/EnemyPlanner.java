@@ -4,9 +4,11 @@ import com.github.mczju.mczjuscription.game.board.BattleBoard;
 import com.github.mczju.mczjuscription.game.board.BoardRules;
 import com.github.mczju.mczjuscription.game.board.BoardSlot;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
-import com.github.mczju.mczjuscription.game.card.CardId;
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 敌方 AI：向准备区放置造物，回合结束时由 {@link BattleBoard#advanceEnemyPreview()} 落场。
@@ -29,19 +31,17 @@ public final class EnemyPlanner {
             return;
         }
         BoardSlot preview = previewRow[slotIndex];
-        BoardCreature creature = new BoardCreature(pickCard().name(), MatchSide.ENEMY);
+        BoardCreature creature = new BoardCreature(pickCard(), MatchSide.ENEMY);
         creature.bind(preview);
         match.spawnCreatureEntity(creature, com.github.mczju.mczjuscription.game.board.SlotOwner.ENEMY_PREVIEW, slotIndex);
         step++;
     }
 
-    private CardId pickCard() {
-        int turn = Math.max(1, match.turn().turnNumber());
-        return switch ((step + turn) % 4) {
-            case 0 -> CardId.WOLF;
-            case 1 -> CardId.BEE;
-            case 2 -> CardId.WOLF_CUB;
-            default -> CardId.RABBIT;
-        };
+    private String pickCard() {
+        List<String> pool = CardCatalog.deckBuilderPool();
+        if (pool.isEmpty()) {
+            return "mob_rabbit";
+        }
+        return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
     }
 }

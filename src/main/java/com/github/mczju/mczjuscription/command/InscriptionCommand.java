@@ -13,6 +13,7 @@ import com.github.mczju.mczjuscription.game.session.PlayVariant;
 import com.github.mczju.mczjuscription.lobby.HubMatchLauncher;
 import com.github.mczju.mczjuscription.menu.CardDesignerMenu;
 import com.github.mczju.mczjuscription.menu.DeckBuilderMenu;
+import com.github.mczju.mczjuscription.menu.ShopAdminMenu;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
 import org.bukkit.command.Command;
@@ -36,7 +37,15 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("用法: /isc <hub|start|arena|deck|carddesign|cardname>");
+            sender.sendMessage("用法: /isc <hub|start|arena|deck|carddesign|cardname|shopconfig>");
+            return true;
+        }
+        if ("shopconfig".equalsIgnoreCase(args[0])) {
+            if (!player.hasPermission("inscription.admin")) {
+                player.sendMessage("你没有商店配置权限。");
+                return true;
+            }
+            new ShopAdminMenu(player).open();
             return true;
         }
         if ("carddesign".equalsIgnoreCase(args[0])) {
@@ -53,12 +62,12 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             if (args.length < 2) {
-                player.sendMessage("用法: /isc cardname <名称>");
+                player.sendMessage("用法: /isc cardname <名称>（也可在设计器点击「名称」用对话框输入）");
                 return true;
             }
             String name = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
             CardDesignerSession.of(player.getUniqueId()).setDisplayName(name);
-            player.sendMessage("§a卡牌名称已设为: §f" + name);
+            player.sendMessage("§a卡牌名称已设为: §f" + name + "§a（设计器内可继续编辑）");
             return true;
         }
         if ("hub".equalsIgnoreCase(args[0])) {
@@ -126,7 +135,7 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
             }
             return true;
         }
-        sender.sendMessage("未知子命令。可用: hub, start, arena, deck, carddesign, cardname");
+        sender.sendMessage("未知子命令。可用: hub, start, arena, deck, carddesign, cardname, shopconfig");
         return true;
     }
 
@@ -134,7 +143,8 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(
             @NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            List<String> options = List.of("hub", "start", "arena", "deck", "carddesign", "cardname");
+            List<String> options =
+                    List.of("hub", "start", "arena", "deck", "carddesign", "cardname", "shopconfig");
             String prefix = args[0].toLowerCase(Locale.ROOT);
             return options.stream().filter(s -> s.startsWith(prefix)).toList();
         }

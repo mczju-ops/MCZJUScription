@@ -1,11 +1,10 @@
 package com.github.mczju.mczjuscription.game.deck;
 
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
-import com.github.mczju.mczjuscription.shop.ShopCatalog;
+import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -40,22 +39,17 @@ public final class OpeningHandDealer {
 
   private static void dealShopOpening(InscriptionMatch match, MatchSide side) {
     for (int i = 0; i < 3; i++) {
-      match.grantCardToHandSilent(side, CardId.RABBIT.name());
+      match.grantCardToHandSilent(side, "mob_rabbit");
     }
     String bonus = randomShopCreature();
     match.grantCardToHandSilent(side, bonus);
   }
 
   private static String randomShopCreature() {
-    List<String> pool = new ArrayList<>();
-    for (CardId id : ShopCatalog.availableCards()) {
-      if (id != CardId.RABBIT) {
-        pool.add(id.name());
-      }
+    String rolled = ShopConfigStorage.get().randomRotatingTemplateId();
+    if (rolled != null && !"mob_rabbit".equalsIgnoreCase(rolled)) {
+      return rolled;
     }
-    if (pool.isEmpty()) {
-      return CardId.RABBIT.name();
-    }
-    return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+    return "mob_wolf";
   }
 }

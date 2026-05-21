@@ -4,8 +4,11 @@ import com.github.mczju.mczjuscription.data.CardDesignerSession;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardTemplate;
 import com.github.mczju.mczjuscription.game.card.SigilRules;
-import com.github.mczju.mczjuscription.game.sigil.SigilId;
-import com.github.mczju.mczjuscription.game.sigil.SigilNames;
+import com.github.mczju.mczjuscription.item.InscriptionItems;
+import com.github.mczju.mczjuscription.ui.DialogTextInput;
+import com.github.mczju.mczjuscription.util.SpawnEggEntityTypes;
+import org.bukkit.inventory.ItemStack;
+import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
 import com.github.mczjuops.mczjugamecore.menu.Menu;
 import com.github.mczjuops.mczjugamecore.utils.ItemBuilder;
 import java.util.ArrayList;
@@ -14,8 +17,10 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Range;
 
-/** 卡牌制作：生物蛋模型、0~3 印记、力量/生命/召唤代价。 */
+/** 卡牌制作：生物蛋模型、0~3 印记、力量/生命、骨币/腐肉召唤代价。 */
 public final class CardDesignerMenu extends Menu {
+
+  public static final int MODEL_SLOT = 4;
 
   private final CardDesignerSession session;
 
@@ -27,59 +32,45 @@ public final class CardDesignerMenu extends Menu {
     }
   }
 
+  public CardDesignerSession session() {
+    return session;
+  }
+
   @Override
   protected void setup() {
     inventory.clear();
     CardTemplate preview = session.toTemplate(false);
 
     setSlot(
-        4,
+        MODEL_SLOT,
         ItemBuilder.of(preview.spawnEggMaterial())
             .customName("<aqua>模型: <white>" + preview.displayName())
             .lore(
                 List.of(
-                    "<gray>当前实体: <white>" + session.entityType().name(),
-                    "<yellow>点击切换生物蛋",
-                    "<gray>印记 %d/%d"
-                        .formatted(session.sigils().size(), SigilRules.MAX_PER_CARD)))
+                    "<gray>当前: <white>"
+                        + SpawnEggEntityTypes.displayEntity(session.entityType()),
+                    "<yellow>将怪物蛋放入此格",
+                    "<gray>（从背包点选或拖入，不消耗）",
+                    "<dark_purple>印记: <light_purple>" + session.sigilSummary()))
             .build(),
-        (p, e) -> {
-          session.cycleEntity();
-          reloadEditor();
-        });
+        (p, e) ->
+            p.player()
+                .sendMessage("§e请从背包拿取怪物蛋，点击或放入上方模型格以选定生物。"));
 
-    SigilId[] pick =
-        new SigilId[] {
-          SigilId.RABBIT_HOLE,
-          SigilId.AIR_STRIKE,
-          SigilId.FLEDGLING,
-          SigilId.BREEDING,
-          SigilId.TOUCH_OF_DEATH,
-          SigilId.STINKY,
-          SigilId.GUARD_DOG,
-          SigilId.TUTOR,
-          SigilId.SPLIT_STRIKE
-        };
-    int[] sigilSlots = {19, 20, 21, 23, 24, 25, 28, 29, 30};
-    for (int i = 0; i < pick.length && i < sigilSlots.length; i++) {
-      SigilId sigil = pick[i];
-      boolean on = session.sigils().contains(sigil);
-      setSlot(
-          sigilSlots[i],
-          ItemBuilder.of(on ? Material.ENCHANTED_BOOK : Material.BOOK)
-              .customName((on ? "<green>✓ " : "<gray>") + SigilNames.display(sigil))
-              .lore(
-                  List.of(
-                      on ? "<gray>点击移除" : "<gray>点击添加",
-                      "<dark_gray>每张卡最多 " + SigilRules.MAX_PER_CARD + " 个印记"))
-              .build(),
-          (p, e) -> {
-            if (!session.toggleSigil(sigil)) {
-              p.player().sendMessage("§c印记已满（最多 %d 个）".formatted(SigilRules.MAX_PER_CARD));
-            }
-            reloadEditor();
-          });
-    }
+    setSlot(
+        22,
+        ItemBuilder.of(Material.WRITABLE_BOOK)
+            .customName("<dark_purple>印记")
+            .lore(
+                List.of(
+                    "<gray>已选: <white>"
+                        + session.sigils().size()
+                        + "/"
+                        + SigilRules.MAX_PER_CARD,
+                    "<gray>当前: <light_purple>" + session.sigilSummary(),
+                    "<yellow>点击打开印记列表"))
+            .build(),
+        (p, e) -> new CardDesignerSigilMenu(p.player(), this, session).open());
 
     setSlot(
         11,
@@ -104,22 +95,24 @@ public final class CardDesignerMenu extends Menu {
         });
 
     setSlot(
-        38,
-        ItemBuilder.of(Material.GOLD_NUGGET)
-            .customName("<gold>召唤代价")
-            .lore(
-                List.of(
-                    "<gray>类型: <white>" + session.costType().name(),
-                    "<gray>数值: <white>" + session.cost(),
-                    "<yellow>点击切换类型",
-                    "<gray>Shift+左键 +1  Shift+右键 -1"))
+        37,
+        ItemBuilder.of(Material.BONE)
+            .customName("<gold>骨币代价: <white>" + session.boneCost())
+            .lore(List.of("<gray>左键 +1  <gray>右键 -1", "<dark_gray>保存为骨币召唤费"))
             .build(),
         (p, e) -> {
-          if (e.isShiftClick()) {
-            session.addCost(e.isLeftClick() ? 1 : -1);
-          } else {
-            session.cycleCostType();
-          }
+          session.addBoneCost(e.isLeftClick() ? 1 : -1);
+          reloadEditor();
+        });
+
+    setSlot(
+        39,
+        ItemBuilder.of(Material.ROTTEN_FLESH)
+            .customName("<red>腐肉代价: <white>" + session.bloodCost())
+            .lore(List.of("<gray>左键 +1  <gray>右键 -1", "<dark_gray>保存为腐肉召唤费"))
+            .build(),
+        (p, e) -> {
+          session.addBloodCost(e.isLeftClick() ? 1 : -1);
           reloadEditor();
         });
 
@@ -127,11 +120,56 @@ public final class CardDesignerMenu extends Menu {
         40,
         ItemBuilder.of(Material.NAME_TAG)
             .customName("<aqua>名称: <white>" + session.displayName())
-            .lore(List.of("<gray>在聊天栏输入: <white>/isc cardname <名称>"))
+            .lore(List.of("<yellow>点击打开对话框输入名称", "<dark_gray>最多 32 字"))
             .build(),
-        (p, e) ->
-            p.player()
-                .sendMessage("§e请使用 §f/isc cardname <名称>§e 修改卡牌名称"));
+        (p, e) -> DialogTextInput.openCardName(p.player(), session.displayName()));
+
+    String editingId = session.editingId();
+    boolean deletable = editingId != null && CardCatalog.canDelete(editingId);
+    setSlot(
+        47,
+        ItemBuilder.of(deletable ? Material.RED_CONCRETE : Material.BARRIER)
+            .customName(deletable ? "<red>删除卡牌" : "<dark_gray>删除卡牌")
+            .lore(
+                deletable
+                    ? List.of(
+                        "<gray>ID: <white>" + editingId,
+                        "<yellow>从 cards.yml 移除",
+                        "<gray>内置覆盖将恢复默认",
+                        "<red>不可撤销，请确认")
+                    : List.of("<dark_gray>核心内置卡不可删除"))
+            .build(),
+        (p, e) -> {
+          if (editingId == null) {
+            return;
+          }
+          if (!CardCatalog.canDelete(editingId)) {
+            p.player().sendMessage("§c核心内置卡不可删除（仅可编辑保存覆盖）。");
+            return;
+          }
+          CardTemplate existing = CardCatalog.get(editingId);
+          String label =
+              existing != null ? existing.displayName() + " (" + editingId + ")" : editingId;
+          new AlertMenu(
+                  p.player(),
+                  () -> {
+                    CardCatalog.DeleteResult result = CardCatalog.deleteCard(editingId);
+                    switch (result) {
+                      case REMOVED ->
+                          p.player()
+                              .sendMessage("§a已删除卡牌 §f" + label + "§a。");
+                      case RESTORED_DEFAULT ->
+                          p.player()
+                              .sendMessage("§a已删除覆盖并恢复内置默认：§f" + editingId + "§a。");
+                      case BUILTIN_PROTECTED ->
+                          p.player().sendMessage("§c该内置卡不可删除。");
+                      case NOT_FOUND -> p.player().sendMessage("§c卡牌不存在或已删除。");
+                    }
+                    session.newCard(CardCatalog.newCustomId());
+                    new CardDesignerMenu(p.player(), new Object[0]).open();
+                  })
+              .open();
+        });
 
     setSlot(
         49,
@@ -140,6 +178,13 @@ public final class CardDesignerMenu extends Menu {
             .lore(List.of("<gray>写入 cards.yml 并热加载"))
             .build(),
         (p, e) -> {
+          if (session.boneCost() > 0 && session.bloodCost() > 0) {
+            p.player()
+                .sendMessage(
+                    "§e骨币与腐肉代价同时大于 0，保存时将优先使用 §f骨币 §e（"
+                        + session.boneCost()
+                        + "）。");
+          }
           CardTemplate saved = session.toTemplate(false);
           CardCatalog.save(saved);
           p.player()
@@ -164,13 +209,43 @@ public final class CardDesignerMenu extends Menu {
           session.newCard(CardCatalog.newCustomId());
           reloadEditor();
         });
+
+    setSlot(
+        51,
+        ItemBuilder.of(Material.CHEST_MINECART)
+            .customName("<green>获取到手上")
+            .lore(
+                List.of(
+                    "<gray>按当前界面数值发放 1 张",
+                    "<dark_gray>无需先保存（会热加载预览）",
+                    "<gray>ID: <white>" + (editingId != null ? editingId : "—")))
+            .build(),
+        (p, e) -> givePreviewToHand(p.player()));
   }
 
-  void reloadEditor() {
+  private void givePreviewToHand(Player player) {
+    String id = session.editingId();
+    if (id == null || id.isBlank()) {
+      player.sendMessage("§c无有效卡牌 ID，无法发放。");
+      return;
+    }
+    CardTemplate preview = session.toTemplate(false);
+    CardCatalog.saveRuntime(preview);
+    ItemStack card = InscriptionItems.card(id).getItem();
+    var leftover = player.getInventory().addItem(card);
+    if (!leftover.isEmpty()) {
+      player.sendMessage("§e背包已满，多余卡牌已掉落在脚边。");
+      leftover.values()
+          .forEach(stack -> player.getWorld().dropItemNaturally(player.getLocation(), stack));
+    }
+    player.sendMessage(
+        "§a已获得卡牌 §f%s §a（%s）。".formatted(preview.displayName(), id));
+  }
+
+  public void reloadEditor() {
     setup();
   }
 
-  /** 父类 {@link Menu} 构造时会调用本方法，此时尚未执行 {@link #session} 赋值。 */
   private CardDesignerSession sessionForTitle() {
     if (session != null) {
       return session;
@@ -223,8 +298,7 @@ public final class CardDesignerMenu extends Menu {
                 .build(),
             (p, e) -> {
               CardDesignerSession.of(p.player().getUniqueId()).load(t);
-              parent.reloadEditor();
-              p.player().closeInventory();
+              parent.open();
             });
       }
       setSlot(

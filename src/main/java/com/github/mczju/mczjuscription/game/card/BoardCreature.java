@@ -18,6 +18,9 @@ public final class BoardCreature {
   private int powerModifier;
   private String displayNameOverride;
   private boolean maturedFromFledgling;
+  private boolean firstShieldConsumed;
+  private boolean sniffConsumed;
+  private boolean skipNextAttack;
   private UUID entityId;
   private UUID displayEntityId;
   private final Set<SigilId> bonusSigils = EnumSet.noneOf(SigilId.class);
@@ -119,6 +122,36 @@ public final class BoardCreature {
     this.displayEntityId = null;
   }
 
+  /** 潜影贝【护盾】：免疫第一次受到伤害。 */
+  public boolean absorbFirstHitWithShield() {
+    if (!hasSigil(SigilId.FIRST_SHIELD) || firstShieldConsumed) {
+      return false;
+    }
+    firstShieldConsumed = true;
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+    return true;
+  }
+
+  /** 【墨水】：下一会合攻击阶段跳过该造物的一次攻击。 */
+  public void markSkipNextAttack() {
+    skipNextAttack = true;
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+  }
+
+  public boolean consumesSkipNextAttack() {
+    if (!skipNextAttack) {
+      return false;
+    }
+    skipNextAttack = false;
+    return true;
+  }
+
+  public void heal(int amount) {
+    if (amount <= 0) return;
+    health += amount;
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+  }
+
   public void damage(int amount) {
     health -= amount;
     com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
@@ -149,8 +182,16 @@ public final class BoardCreature {
     return Collections.unmodifiableSet(out);
   }
 
+  public void consumeSniffSigil() {
+    sniffConsumed = true;
+    com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+  }
+
   public boolean hasSigil(SigilId sigil) {
     if (maturedFromFledgling && sigil == SigilId.FLEDGLING) {
+      return false;
+    }
+    if (sniffConsumed && sigil == SigilId.SNIFF_STEAL) {
       return false;
     }
     return template().hasSigil(sigil) || bonusSigils.contains(sigil);

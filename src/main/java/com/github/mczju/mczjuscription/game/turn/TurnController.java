@@ -142,16 +142,33 @@ public final class TurnController {
         if (match.isMatchOver()) {
             return;
         }
-        if (next == TurnPhase.DRAW) {
-            WanderingTraderService.onTraderTurnStart(match);
-        } else if (next != TurnPhase.DRAW) {
-            WanderingTraderService.despawnTrader(match);
+        if (next == TurnPhase.DRAW && match.deckMode() == DeckMode.SHOP) {
+            match.refreshShopOffers();
         }
+        syncTraderPresence(next);
         match.feedback().announcePhase(next, turnNumber);
         match.syncHud();
     }
 
     public void planEnemyPreview() {
         match.planOpponentPreview();
+    }
+
+    /**
+     * 商人回合（3、6、9…）在抽牌与出牌阶段均保留，便于献祭换腐肉后购买；
+     * 进入战斗阶段或非商人回合时移除。
+     */
+    private void syncTraderPresence(TurnPhase next) {
+        if (!WanderingTraderService.isTraderTurn(turnNumber)) {
+            WanderingTraderService.despawnTrader(match);
+            return;
+        }
+        if (next == TurnPhase.DRAW) {
+            WanderingTraderService.onTraderTurnStart(match);
+        } else if (next == TurnPhase.PLAY) {
+            WanderingTraderService.ensureTraderPresent(match);
+        } else {
+            WanderingTraderService.despawnTrader(match);
+        }
     }
 }
