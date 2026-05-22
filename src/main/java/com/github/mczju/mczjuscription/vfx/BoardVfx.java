@@ -8,6 +8,7 @@ import com.github.mczju.mczjuscription.game.match.MatchSide;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
@@ -23,6 +24,16 @@ public final class BoardVfx {
         World world = at.getWorld();
         world.spawnParticle(Particle.POOF, at, 18, 0.35, 0.45, 0.35, 0.04);
         world.spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 0.8, 0), 6, 0.15, 0.2, 0.15, 0);
+    }
+
+    /** 末影人【穿梭】：出发/到达时的传送音效与粒子。 */
+    public static void playEnderTeleport(Location loc) {
+        Location at = center(loc);
+        if (at == null) return;
+        World world = at.getWorld();
+        world.playSound(at, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+        world.spawnParticle(Particle.PORTAL, at.clone().add(0, 0.55, 0), 28, 0.4, 0.55, 0.4, 0.45);
+        world.spawnParticle(Particle.REVERSE_PORTAL, at.clone().add(0, 0.65, 0), 10, 0.18, 0.3, 0.18, 0.04);
     }
 
     public static void playMove(Location from, Location to) {
@@ -69,13 +80,18 @@ public final class BoardVfx {
         );
         world.spawnParticle(Particle.SWEEP_ATTACK, at, 1);
         if (instantKill) {
-            world.spawnParticle(Particle.SOUL_FIRE_FLAME, at, 20, 0.35, 0.5, 0.35, 0.02);
+            world.spawnParticle(Particle.TRIAL_OMEN, at, 20, 0.35, 0.5, 0.35, 0.02);
         }
     }
 
-    public static void playDirectDamage(InscriptionMatch match, MatchSide victimSide, int damage) {
-        Location at = resolveDirectDamageLocation(match, victimSide);
+    public static void playDirectDamage(
+            InscriptionMatch match, MatchSide victimSide, int lane, int damage) {
+        Location at = slotLocation(match, victimSide, lane);
+        if (at == null) {
+            at = resolveDirectDamageFallback(match, victimSide);
+        }
         if (at == null) return;
+        at = center(at);
         World world = at.getWorld();
         world.spawnParticle(Particle.CRIT, at, Math.min(30, 10 + damage * 4), 0.5, 0.6, 0.5, 0.15);
         world.spawnParticle(Particle.SMOKE, at.clone().add(0, 0.5, 0), 12, 0.3, 0.4, 0.3, 0.02);
@@ -97,6 +113,29 @@ public final class BoardVfx {
         world.spawnParticle(Particle.ASH, at.clone().add(0, 0.3, 0), 12, 0.2, 0.3, 0.2, 0.02);
     }
 
+    /** 【自爆】主体：大爆炸 + 音效。 */
+    public static void playSelfDestructMain(Location loc) {
+        Location at = center(loc);
+        if (at == null) return;
+        World world = at.getWorld();
+        world.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.82f);
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, at.clone().add(0, 0.35, 0), 1);
+        world.spawnParticle(Particle.FLAME, at, 48, 0.55, 0.7, 0.55, 0.06);
+        world.spawnParticle(Particle.LARGE_SMOKE, at.clone().add(0, 0.45, 0), 20, 0.5, 0.6, 0.5, 0.04);
+        world.spawnParticle(Particle.SMOKE, at, 28, 0.45, 0.55, 0.45, 0.05);
+    }
+
+    /** 【自爆】溅射：面前/相邻格较小爆炸。 */
+    public static void playSelfDestructSplash(Location loc) {
+        Location at = center(loc);
+        if (at == null) return;
+        World world = at.getWorld();
+        world.playSound(at, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.5f, 1.4f);
+        world.spawnParticle(Particle.EXPLOSION, at.clone().add(0, 0.25, 0), 1, 0.05, 0.08, 0.05, 0);
+        world.spawnParticle(Particle.FLAME, at, 18, 0.28, 0.35, 0.28, 0.03);
+        world.spawnParticle(Particle.SMOKE, at, 10, 0.22, 0.28, 0.22, 0.02);
+    }
+
     public static Location locationOf(InscriptionMatch match, BoardCreature creature) {
         if (creature == null) return null;
         if (match.arena() != null && creature.slot() != null) {
@@ -110,7 +149,20 @@ public final class BoardVfx {
         return null;
     }
 
-    private static Location resolveDirectDamageLocation(InscriptionMatch match, MatchSide victimSide) {
+    public static Location slotLocation(InscriptionMatch match, MatchSide side, int laneIndex) {
+        BattleArena arena = match.arena();
+        if (arena == null) return null;
+        SlotOwner row = side == MatchSide.PLAYER ? SlotOwner.PLAYER : SlotOwner.ENEMY;
+        return arena.slotLocation(row, laneIndex);
+    }
+
+    public static Location slotLocation(InscriptionMatch match, SlotOwner owner, int laneIndex) {
+        BattleArena arena = match.arena();
+        if (arena == null) return null;
+        return arena.slotLocation(owner, laneIndex);
+    }
+
+    private static Location resolveDirectDamageFallback(InscriptionMatch match, MatchSide victimSide) {
         BattleArena arena = match.arena();
         if (arena != null) {
             SlotOwner row = victimSide == MatchSide.PLAYER ? SlotOwner.PLAYER : SlotOwner.ENEMY;

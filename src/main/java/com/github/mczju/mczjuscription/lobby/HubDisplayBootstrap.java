@@ -8,26 +8,21 @@ import com.github.mczjuops.mczjugamecore.score.leaderboard.textdisplay.JsonTextD
 import com.github.mczjuops.mczjugamecore.score.leaderboard.textdisplay.TextDisplayRecord;
 import org.bukkit.entity.Display;
 
-/**
- * 将 {@link InscriptionGameRoom} 坐标同步到 MGC {@link com.github.mczjuops.mczjugamecore.score.leaderboard.LeaderboardManager}
- * 的 TextDisplay 档案；路标仍用 {@link HubSignageService}（静态文案，非排行）。
- */
+/** 大厅座位示意 + MGC 通关榜 TextDisplay（位置 {@code leaderboardAt}）。 */
 public final class HubDisplayBootstrap {
 
     public static final String CLEAR_DISPLAY_ID = "hub_main";
 
     private HubDisplayBootstrap() {}
 
-    /** 大厅路标 + 座位示意（全服每房间一套，见各 Service 内去重）。 */
     public static void ensureHubDecor(InscriptionGameRoom room) {
         if (room == null) {
             return;
         }
-        HubSignageService.ensureSpawned(room);
         HubSeatMarkerService.ensureSpawned(room);
     }
 
-    /** 同步排行榜展示并确保大厅装饰存在。 */
+    /** 同步通关榜展示并确保大厅装饰存在。 */
     public static void sync(InscriptionGameRoom room) {
         if (room == null) {
             return;
@@ -43,12 +38,11 @@ public final class HubDisplayBootstrap {
         var manager = MCZJUGameCore.getLeaderboardManager();
         TextDisplayRecord record = manager.getDisplayRecord(InscriptionClearLeaderboard.ID, CLEAR_DISPLAY_ID);
         if (record == null) {
-            record =
-                    new JsonTextDisplayRecord(InscriptionClearLeaderboard.ID, CLEAR_DISPLAY_ID);
+            record = new JsonTextDisplayRecord(InscriptionClearLeaderboard.ID, CLEAR_DISPLAY_ID);
             manager.createTextDisplay(InscriptionClearLeaderboard.ID, record);
         }
         record.setLocation(room.leaderboardAt.clone());
-        record.getProperties().setBillboard(Display.Billboard.CENTER);
+        record.getProperties().setBillboard(Display.Billboard.VERTICAL);
         record.getProperties().setHasBackground(false);
         record.setModified(true);
         record.save();

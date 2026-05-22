@@ -10,7 +10,7 @@ import java.util.Set;
 
 public final class CardDefinition {
 
-    private final CardId id;
+    private final String id;
     private final String displayName;
     private final EntityType entityType;
     private final int power;
@@ -34,7 +34,7 @@ public final class CardDefinition {
                 : Collections.unmodifiableSet(EnumSet.copyOf(builder.sigils));
     }
 
-    public CardId id() {
+    public String id() {
         return id;
     }
 
@@ -85,12 +85,12 @@ public final class CardDefinition {
         return sigils.contains(sigil);
     }
 
-    public static Builder builder(CardId id) {
+    public static Builder builder(String id) {
         return new Builder(id);
     }
 
     public static final class Builder {
-        private final CardId id;
+        private final String id;
         private String displayName;
         private EntityType entityType = EntityType.PIG;
         private int power;
@@ -100,9 +100,9 @@ public final class CardDefinition {
         private int sacrificeValue = 1;
         private final Set<SigilId> sigils = EnumSet.noneOf(SigilId.class);
 
-        private Builder(CardId id) {
+        private Builder(String id) {
             this.id = id;
-            this.displayName = id.name();
+            this.displayName = id;
         }
 
         public Builder displayName(String displayName) {

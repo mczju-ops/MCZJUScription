@@ -8,11 +8,15 @@ import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.combat.BeamTargeting;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
+import com.github.mczju.mczjuscription.game.session.DeckMode;
+import com.github.mczju.mczjuscription.game.turn.TurnPhase;
 import com.github.mczju.mczjuscription.item.InscriptionCardItem;
 import com.github.mczju.mczjuscription.item.InscriptionItemUtil;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
+import com.github.mczju.mczjuscription.menu.SigilManualMenu;
 import com.github.mczju.mczjuscription.ui.MatchHotbar;
 import com.github.mczju.mczjuscription.roguelike.WanderingTraderService;
+import com.github.mczju.mczjuscription.shop.ShopVillagerService;
 import com.github.mczju.mczjuscription.ui.ResourceHotbar;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
@@ -63,20 +67,9 @@ public final class MatchListener implements Listener {
             match.drawFromMainDeck(side);
             return;
         }
-        if (InscriptionItems.shopDeck().isThis(item) || isTool(item, InscriptionItems.shopDeck())) {
+        if (InscriptionItems.sigilManual().isThis(item) || isTool(item, InscriptionItems.sigilManual())) {
             event.setCancelled(true);
-            if (match.deckMode() == com.github.mczju.mczjuscription.game.session.DeckMode.SHOP
-                    && match.turn().phase() == com.github.mczju.mczjuscription.game.turn.TurnPhase.DRAW
-                    && player.isSneaking()) {
-                match.turn().proceedToPlayFromDraw();
-            } else {
-                match.drawFromMainDeck(side);
-            }
-            return;
-        }
-        if (InscriptionItems.rabbitPile().isThis(item) || isTool(item, InscriptionItems.rabbitPile())) {
-            event.setCancelled(true);
-            match.drawFromRabbitPile(side);
+            new SigilManualMenu(player, 0).open();
             return;
         }
 
@@ -97,6 +90,12 @@ public final class MatchListener implements Listener {
 
         MatchSide side = match.sideFor(player);
         if (side == null) return;
+
+        if (ShopVillagerService.isShopVillager(event.getRightClicked(), match)) {
+            event.setCancelled(true);
+            ShopVillagerService.tryOpenShop(player, match);
+            return;
+        }
 
         if (WanderingTraderService.isTraderEntity(event.getRightClicked(), match)) {
             event.setCancelled(true);
@@ -135,7 +134,7 @@ public final class MatchListener implements Listener {
 
         if (event.getClick() == ClickType.SWAP_OFFHAND) {
             int held = player.getInventory().getHeldItemSlot();
-            if (MatchHotbar.isLockedSlot(held)) {
+            if (MatchHotbar.isLockedSlot(held, match.deckMode())) {
                 event.setCancelled(true);
                 return;
             }
@@ -143,7 +142,7 @@ public final class MatchListener implements Listener {
 
         if (event.getClick() == ClickType.NUMBER_KEY) {
             int hotbar = event.getHotbarButton();
-            if (hotbar >= 0 && MatchHotbar.isLockedSlot(hotbar)) {
+            if (hotbar >= 0 && MatchHotbar.isLockedSlot(hotbar, match.deckMode())) {
                 event.setCancelled(true);
                 return;
             }
@@ -151,7 +150,7 @@ public final class MatchListener implements Listener {
 
         if (event.getClickedInventory() == player.getInventory()) {
             int slot = event.getSlot();
-            if (MatchHotbar.isLockedSlot(slot)) {
+            if (MatchHotbar.isLockedSlot(slot, match.deckMode())) {
                 event.setCancelled(true);
                 return;
             }
@@ -175,7 +174,7 @@ public final class MatchListener implements Listener {
         for (int raw : event.getRawSlots()) {
             if (raw < topSize) continue;
             int rel = raw - topSize;
-            if (rel < 9 && MatchHotbar.isLockedSlot(rel)) {
+            if (rel < 9 && MatchHotbar.isLockedSlot(rel, match.deckMode())) {
                 event.setCancelled(true);
                 return;
             }
@@ -216,21 +215,25 @@ public final class MatchListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBreakClock(BlockBreakEvent event) {
+    public void onBreakProtectedBlocks(BlockBreakEvent event) {
         InscriptionMatch match = InscriptionGameAccess.resolveMatch(event.getPlayer());
         if (match == null || match.arena() == null) return;
-        if (ArenaClockPlacement.isClockBlock(match.arena(), event.getBlock())) {
+        BattleArena arena = match.arena();
+        MatchSide side = match.sideFor(event.getPlayer());
+        if (side != null && ArenaClockPlacement.isClockBlock(arena, event.getBlock(), side)) {
             event.setCancelled(true);
         }
     }
 
     private static boolean tryRingBellAtLocation(PlayerInteractEvent event, InscriptionMatch match, Player player) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return false;
+        MatchSide side = match.sideFor(player);
+        if (side == null) return false;
         BattleArena arena = match.arena();
-        if (arena == null || !arena.hasClock()) return false;
+        if (arena == null || !arena.hasClock(side)) return false;
 
         Block clicked = event.getClickedBlock();
-        if (clicked != null && ArenaClockPlacement.isClockBlock(arena, clicked)) {
+        if (clicked != null && ArenaClockPlacement.isClockBlock(arena, clicked, side)) {
             event.setCancelled(true);
             tryRingBell(match, player);
             return true;
@@ -240,7 +243,8 @@ public final class MatchListener implements Listener {
         if (point == null && clicked != null) {
             point = clicked.getLocation().add(0.5, 0.5, 0.5);
         }
-        if (point != null && ArenaClockPlacement.isClockInteract(point, arena.clockLocation())) {
+        Location clockCenter = arena.clockLocation(side);
+        if (point != null && clockCenter != null && ArenaClockPlacement.isClockInteract(point, clockCenter)) {
             event.setCancelled(true);
             tryRingBell(match, player);
             return true;

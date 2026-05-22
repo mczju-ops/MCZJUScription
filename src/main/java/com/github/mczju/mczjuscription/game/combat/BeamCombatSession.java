@@ -15,6 +15,8 @@ public final class BeamCombatSession {
   private final Runnable onSlotComplete;
 
   private UUID pendingTargetId;
+  /** 射线选中的敌方列（含空槽直伤）。 */
+  private Integer pendingLaneIndex;
 
   BeamCombatSession(
       CombatResolver resolver,
@@ -61,5 +63,18 @@ public final class BeamCombatSession {
 
   public void setPendingTargetId(UUID pendingTargetId) {
     this.pendingTargetId = pendingTargetId;
+  }
+
+  public Integer pendingLaneIndex() {
+    return pendingLaneIndex;
+  }
+
+  public void setPendingLaneIndex(Integer pendingLaneIndex) {
+    this.pendingLaneIndex = pendingLaneIndex;
+  }
+
+  public void clearPendingSelection() {
+    this.pendingTargetId = null;
+    this.pendingLaneIndex = null;
   }
 }

@@ -23,6 +23,7 @@ public final class CardDesignerSession {
   private int health = 1;
   private int bloodCost = 1;
   private int boneCost = 0;
+  private int fishCost = 0;
 
   public static CardDesignerSession of(UUID playerId) {
     return SESSIONS.computeIfAbsent(playerId, id -> new CardDesignerSession());
@@ -43,12 +44,19 @@ public final class CardDesignerSession {
     if (template.costType() == CostType.BONES) {
       boneCost = template.cost();
       bloodCost = 0;
+      fishCost = 0;
+    } else if (template.costType() == CostType.FISH) {
+      fishCost = template.cost();
+      bloodCost = 0;
+      boneCost = 0;
     } else if (template.costType() == CostType.BLOOD) {
       bloodCost = template.cost();
       boneCost = 0;
+      fishCost = 0;
     } else {
       bloodCost = 0;
       boneCost = 0;
+      fishCost = 0;
     }
   }
 
@@ -61,6 +69,7 @@ public final class CardDesignerSession {
     health = 1;
     bloodCost = 1;
     boneCost = 0;
+    fishCost = 0;
   }
 
   public CardTemplate toTemplate(boolean builtin) {
@@ -72,6 +81,9 @@ public final class CardDesignerSession {
     if (boneCost > 0) {
       t.setCostType(CostType.BONES);
       t.setCost(boneCost);
+    } else if (fishCost > 0) {
+      t.setCostType(CostType.FISH);
+      t.setCost(fishCost);
     } else if (bloodCost > 0) {
       t.setCostType(CostType.BLOOD);
       t.setCost(bloodCost);
@@ -144,6 +156,14 @@ public final class CardDesignerSession {
 
   public int boneCost() {
     return boneCost;
+  }
+
+  public int fishCost() {
+    return fishCost;
+  }
+
+  public void addFishCost(int delta) {
+    fishCost = Math.max(0, fishCost + delta);
   }
 
   public void addBloodCost(int delta) {

@@ -18,7 +18,7 @@ public final class SigilRegistry {
   static {
     register(SigilId.SPIKY_ARMOR, ctx -> {
       if (ctx.target() != null && ctx.damage() > 0) {
-        ctx.target().damage(1);
+        ctx.match().damageCreature(ctx.target(), 1, ctx.source().owner());
       }
     });
 
@@ -38,9 +38,9 @@ public final class SigilRegistry {
 
     register(SigilId.RUSH_PUSH, ctx -> BoardShift.move(ctx.match(), ctx.source(), ctx.source().slot().index() > 0 ? 1 : -1));
 
-    register(SigilId.ENDER_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
+    register(SigilId.ENDER_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source(), BoardShift.ShiftStyle.ENDER_TELEPORT));
 
-    register(SigilId.GUST_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
+    register(SigilId.GUST_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source(), BoardShift.ShiftStyle.BREEZE_JUMP));
 
     register(
         SigilId.INK,
@@ -52,7 +52,7 @@ public final class SigilRegistry {
 
     register(SigilId.SNIFF_STEAL, ctx -> resolveSniffSteal(ctx.match(), ctx.source()));
 
-    register(SigilId.FISH_BAIT, ctx -> ctx.match().grantCardToHandSilent(ctx.source().owner(), "mob_fish_dried"));
+    register(SigilId.FISH_BAIT, ctx -> ctx.match().grantFish(ctx.source().owner(), 1));
 
     register(SigilId.DEMON_OFFER, ctx -> ctx.match().grantBones(ctx.source().owner(), 3));
 
@@ -64,7 +64,7 @@ public final class SigilRegistry {
 
     register(SigilId.WATER_STORE, ctx -> ctx.source().heal(1));
 
-    register(SigilId.WANDER, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source()));
+    register(SigilId.WANDER, ctx -> WanderHandler.wander(ctx.match(), ctx.source()));
 
     register(SigilId.SELF_DESTRUCT, ctx -> SelfDestructHandler.explode(ctx.match(), ctx.source()));
 

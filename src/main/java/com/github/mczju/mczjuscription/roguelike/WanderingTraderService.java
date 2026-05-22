@@ -1,11 +1,9 @@
 package com.github.mczju.mczjuscription.roguelike;
 
-import com.github.mczju.mczjuscription.arena.ArenaFacing;
 import com.github.mczju.mczjuscription.arena.BattleArena;
 import com.github.mczju.mczjuscription.entity.MatchEntityDisplay;
 import com.github.mczju.mczjuscription.entity.MatchEntityProtection;
-import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
-import com.github.mczju.mczjuscription.game.board.SlotOwner;
+import com.github.mczju.mczjuscription.arena.ResolvedArenaLayout;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.menu.WanderingTraderMenu;
@@ -65,7 +63,7 @@ public final class WanderingTraderService {
     despawnTrader(match);
     Location at = resolveTraderLocation(match);
     if (at == null || at.getWorld() == null) {
-      match.feedback().actionBarWarn("<yellow>未配置商人位置（房间 traderAt 或场地钟附近）");
+      match.feedback().actionBarWarn("<yellow>未配置流浪商人位置");
       return;
     }
 
@@ -175,27 +173,17 @@ public final class WanderingTraderService {
   }
 
   private static Location resolveTraderLocation(InscriptionMatch match) {
-    InscriptionGameRoom room = match.matchRoom();
-    if (room != null && room.traderAt != null) {
-      Location at = room.traderAt.clone();
-      if (room.traderYaw != null) {
-        at.setYaw(room.traderYaw);
-      }
-      return at;
-    }
+    MatchSide side = match.actingSide();
     BattleArena arena = match.arena();
-    if (arena != null) {
-      if (arena.hasClock()) {
-        return arena.clockLocation();
+    if (arena != null && arena.layout() != null) {
+      ResolvedArenaLayout.StagingSites staging = arena.layout().staging(side);
+      if (staging != null && staging.wanderingTrader != null) {
+        return staging.wanderingTrader.clone();
       }
-      Location slot = arena.slotLocation(SlotOwner.PLAYER, 1);
-      if (slot != null) {
-        return ArenaFacing.withYawToward(
-            slot, ArenaFacing.facingTarget(arena, SlotOwner.ENEMY, 1));
+      Location clock = arena.clockLocation(side);
+      if (clock != null) {
+        return clock.clone();
       }
-    }
-    if (room != null && room.spawnAt != null) {
-      return room.spawnAt.clone();
     }
     return null;
   }

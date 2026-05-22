@@ -30,17 +30,32 @@ public final class TurnController {
         return turnNumber;
     }
 
-    public boolean canDrawFromRabbitPile() {
-        return phase == TurnPhase.DRAW && !drewFromRabbitPileThisTurn;
+    /** 商店模式：购卡、领兔子、出牌、献祭均在 {@link TurnPhase#PLAY}（整备阶段）。 */
+    public boolean isShopPlanningPhase() {
+        return match.deckMode() == DeckMode.SHOP && phase == TurnPhase.PLAY;
     }
 
-    /** 商店：抽牌阶段可反复打开；自由构牌：每回合抽主牌组一次。 */
-    public boolean canDrawFromMainDeck() {
-        if (phase != TurnPhase.DRAW) {
+    public boolean hasDrawnFromRabbitPileThisTurn() {
+        return drewFromRabbitPileThisTurn;
+    }
+
+    public boolean canDrawFromRabbitPile() {
+        if (drewFromRabbitPileThisTurn) {
             return false;
         }
         if (match.deckMode() == DeckMode.SHOP) {
-            return true;
+            return isShopPlanningPhase();
+        }
+        return phase == TurnPhase.DRAW;
+    }
+
+    /** 商店：整备阶段可反复打开；自由构牌：抽牌阶段每回合抽主牌组一次。 */
+    public boolean canDrawFromMainDeck() {
+        if (match.deckMode() == DeckMode.SHOP) {
+            return isShopPlanningPhase();
+        }
+        if (phase != TurnPhase.DRAW) {
+            return false;
         }
         return !drewFromMainDeckThisTurn;
     }
@@ -55,25 +70,14 @@ public final class TurnController {
         maybeLeaveDrawPhase();
     }
 
-    /** 商店购卡不结束抽牌阶段；仅兔子堆（或自由构牌抽牌）会进入出牌阶段。 */
+    /** 自由构牌：抽牌结束后进入出牌；商店模式不切换阶段。 */
     private void maybeLeaveDrawPhase() {
         if (match.deckMode() == DeckMode.SHOP) {
-            if (drewFromRabbitPileThisTurn) {
-                enterPhase(TurnPhase.PLAY);
-            }
             return;
         }
         if (drewFromMainDeckThisTurn || drewFromRabbitPileThisTurn) {
             enterPhase(TurnPhase.PLAY);
         }
-    }
-
-    /** 商店模式：潜行+右键商店工具，不抽兔子也可进入出牌阶段。 */
-    public void proceedToPlayFromDraw() {
-        if (phase != TurnPhase.DRAW || match.deckMode() != DeckMode.SHOP) {
-            return;
-        }
-        enterPhase(TurnPhase.PLAY);
     }
 
     public void ringBell() {
@@ -85,6 +89,7 @@ public final class TurnController {
             return;
         }
         match.setCombatAnimating(true);
+        match.clearRoundResolvedDuringCombat();
         match.breedingTracker().markCombatStart(match.board());
         enterPhase(TurnPhase.PLAYER_COMBAT);
         runCombatSequence();
@@ -99,10 +104,20 @@ public final class TurnController {
                 finishCombatAnimation();
                 return;
             }
+            if (match.roundResolvedDuringCombat()) {
+                finishCombatAnimation();
+                endTurn();
+                return;
+            }
             enterPhase(TurnPhase.ENEMY_PREP);
             PreviewAdvanceSequence.run(match, () -> {
                 if (match.isMatchOver()) {
                     finishCombatAnimation();
+                    return;
+                }
+                if (match.roundResolvedDuringCombat()) {
+                    finishCombatAnimation();
+                    endTurn();
                     return;
                 }
                 enterPhase(TurnPhase.ENEMY_COMBAT);
@@ -134,7 +149,11 @@ public final class TurnController {
         turnNumber++;
         drewFromRabbitPileThisTurn = false;
         drewFromMainDeckThisTurn = false;
-        enterPhase(TurnPhase.DRAW);
+        enterPhase(planningPhaseForNewTurn());
+    }
+
+    private TurnPhase planningPhaseForNewTurn() {
+        return match.deckMode() == DeckMode.SHOP ? TurnPhase.PLAY : TurnPhase.DRAW;
     }
 
     public void enterPhase(TurnPhase next) {
@@ -142,7 +161,7 @@ public final class TurnController {
         if (match.isMatchOver()) {
             return;
         }
-        if (next == TurnPhase.DRAW && match.deckMode() == DeckMode.SHOP) {
+        if (match.deckMode() == DeckMode.SHOP && next == TurnPhase.PLAY) {
             match.refreshShopOffers();
         }
         syncTraderPresence(next);
@@ -166,7 +185,11 @@ public final class TurnController {
         if (next == TurnPhase.DRAW) {
             WanderingTraderService.onTraderTurnStart(match);
         } else if (next == TurnPhase.PLAY) {
-            WanderingTraderService.ensureTraderPresent(match);
+            if (match.deckMode() == DeckMode.SHOP) {
+                WanderingTraderService.onTraderTurnStart(match);
+            } else {
+                WanderingTraderService.ensureTraderPresent(match);
+            }
         } else {
             WanderingTraderService.despawnTrader(match);
         }

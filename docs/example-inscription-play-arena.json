@@ -1,0 +1,12 @@
+{
+  "gameId": "inscription",
+  "roomName": "play10",
+  "playerCandles": 3,
+  "enemyCandles": 3,
+  "arenaCornerA": { "world": "world", "x": 10.5, "y": 64.0, "z": 10.5 },
+  "arenaCornerB": { "world": "world", "x": 20.5, "y": 64.0, "z": 26.5 },
+  "arenaOrientation": "WEST",
+  "arenaUiIconPitchDeg": 0,
+  "arenaUiIconYawDeg": 0,
+  "arenaUiIconRollDeg": 0
+}

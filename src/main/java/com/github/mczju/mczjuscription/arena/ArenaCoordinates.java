@@ -11,7 +11,7 @@ import org.bukkit.Location;
  */
 public final class ArenaCoordinates {
 
-    public static final float PEDAL_WIDTH = 0.8f;
+    public static final float PEDAL_WIDTH = 1.8f;
     public static final float PEDAL_HALF_WIDTH = PEDAL_WIDTH / 2f;
 
     /** 相对房间标点的 Y 抬高（踏板厚度中心对齐用，与 XZ 角点偏移无关）。 */
@@ -23,6 +23,28 @@ public final class ArenaCoordinates {
     public static Location toSlotCenter(Location configured) {
         if (configured == null) return null;
         return configured.clone().add(0, SLOT_Y_OFFSET, 0);
+    }
+
+    /** 房间标点（方块 X/Z 中心，Y 为方块底面）→ 方块角点。 */
+    public static Location toBlockCorner(Location configured) {
+        if (configured == null || configured.getWorld() == null) {
+            return null;
+        }
+        return configured.getBlock().getLocation();
+    }
+
+    /** 方块角点 → 几何中心（+0.5）。 */
+    public static Location cornerToBlockCenter(Location blockCorner) {
+        if (blockCorner == null) {
+            return null;
+        }
+        return blockCorner.clone().add(0.5, 0.5, 0.5);
+    }
+
+    /** 房间标点 → 方块几何中心。 */
+    public static Location toBlockCenter(Location configured) {
+        Location corner = toBlockCorner(configured);
+        return corner == null ? null : cornerToBlockCenter(corner);
     }
 
     /**
@@ -37,6 +59,50 @@ public final class ArenaCoordinates {
 
     public static Location toPedalSpawn(Location configured) {
         return toDisplaySpawn(configured, PEDAL_HALF_WIDTH);
+    }
+
+    /** 长条踏板（11×2 区域）生成点；长边沿棋盘宽度方向。 */
+    public static Location toStripPedalSpawn(Location stripCenter, ArenaOrientation orientation) {
+        return toStripPedalSpawn(stripCenter, orientation, ArenaGridParser.STRIP_PEDAL_LENGTH);
+    }
+
+    /** 内嵌 1.8×10.8 条带踏板，居中于 2×11 区域。 */
+    public static Location toInnerStripPedalSpawn(Location stripCenter, ArenaOrientation orientation) {
+        return toStripPedalSpawn(stripCenter, orientation, ArenaGridParser.INNER_STRIP_PEDAL_LENGTH);
+    }
+
+    /** @deprecated 使用 {@link #toInnerStripPedalSpawn} */
+    @Deprecated
+    public static Location toPreviewInnerPedalSpawn(Location stripCenter, ArenaOrientation orientation) {
+        return toInnerStripPedalSpawn(stripCenter, orientation);
+    }
+
+    private static Location toStripPedalSpawn(
+            Location stripCenter, ArenaOrientation orientation, float pedalLength) {
+        if (stripCenter == null) {
+            return null;
+        }
+        float halfLen = pedalLength / 2f;
+        float halfDepth = ArenaGridParser.STRIP_PEDAL_DEPTH / 2f;
+        if (stripLengthAlongWorldZ(orientation)) {
+            return stripCenter.clone().add(-halfDepth, SLOT_Y_OFFSET, -halfLen);
+        }
+        return stripCenter.clone().add(-halfLen, SLOT_Y_OFFSET, -halfDepth);
+    }
+
+    /** EAST/WEST 时条带长边沿世界 Z，否则沿世界 X。 */
+    public static boolean stripLengthAlongWorldZ(ArenaOrientation orientation) {
+        return orientation == ArenaOrientation.EAST || orientation == ArenaOrientation.WEST;
+    }
+
+    /** @deprecated 使用 {@link #toStripPedalSpawn(Location, ArenaOrientation)} */
+    @Deprecated
+    public static Location toStripPedalSpawn(Location stripCenter) {
+        return toStripPedalSpawn(stripCenter, ArenaOrientation.SOUTH);
+    }
+
+    public static Location toStripCenter(Location configured) {
+        return configured == null ? null : configured.clone().add(0, SLOT_Y_OFFSET, 0);
     }
 
     /** @deprecated 使用 {@link #toSlotCenter} 或 {@link #toPedalSpawn} */

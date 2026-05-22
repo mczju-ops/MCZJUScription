@@ -2,6 +2,7 @@ package com.github.mczju.mczjuscription.command;
 
 import com.github.mczju.mczjuscription.InscriptionBranding;
 import com.github.mczju.mczjuscription.arena.ArenaBootstrap;
+import com.github.mczju.mczjuscription.arena.ArenaUiIconCommandHandler;
 import com.github.mczju.mczjuscription.data.CardDesignerSession;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
 import com.github.mczju.mczjuscription.game.InscriptionGame;
@@ -127,12 +128,20 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("对局尚未就绪。");
                 return true;
             }
+            if (args.length >= 2) {
+                if (ArenaUiIconCommandHandler.handle(player, match, args)) {
+                    return true;
+                }
+                player.sendMessage("§c用法: /isc arena ui icon <yaw|pitch|show|reset> [角度]");
+                return true;
+            }
             InscriptionGameRoom room = match.matchRoom();
-            if (room != null && room.hasConfiguredArena()) {
+            if (room != null && room.hasConfiguredArena(match.mode())) {
                 ArenaBootstrap.bindForMatch(match, room, match.humanParticipants(), game.sender());
             } else {
                 ArenaBootstrap.bindAtPlayer(match, player, game.sender());
             }
+            player.sendMessage("§7UI 图标旋转: §f/isc arena ui icon show§7，微调 §f/isc arena ui icon yaw +5");
             return true;
         }
         sender.sendMessage("未知子命令。可用: hub, start, arena, deck, carddesign, cardname, shopconfig");
@@ -153,6 +162,18 @@ public final class InscriptionCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && "start".equalsIgnoreCase(args[0])) {
             return filter(List.of("shop", "free"), args[2]);
+        }
+        if (args.length == 2 && "arena".equalsIgnoreCase(args[0])) {
+            return filter(List.of("ui"), args[1]);
+        }
+        if (args.length == 3 && "arena".equalsIgnoreCase(args[0]) && "ui".equalsIgnoreCase(args[1])) {
+            return filter(List.of("icon"), args[2]);
+        }
+        if (args.length == 4
+                && "arena".equalsIgnoreCase(args[0])
+                && "ui".equalsIgnoreCase(args[1])
+                && "icon".equalsIgnoreCase(args[2])) {
+            return filter(List.of("yaw", "pitch", "show", "reset"), args[3]);
         }
         return List.of();
     }

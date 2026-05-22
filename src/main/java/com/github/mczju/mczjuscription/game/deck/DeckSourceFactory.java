@@ -2,7 +2,6 @@ package com.github.mczju.mczjuscription.game.deck;
 
 import com.github.mczju.mczjuscription.data.InscriptionPlayerData;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.MatchParticipant;
 import com.github.mczju.mczjuscription.shop.ShopPresenter;

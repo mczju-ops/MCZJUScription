@@ -10,6 +10,8 @@ import com.github.mczju.mczjuscription.game.InscriptionRoomSetup;
 import com.github.mczju.mczjuscription.game.AbstractInscriptionGame;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.listener.CardDesignerMenuListener;
+import com.github.mczju.mczjuscription.listener.DeckBuilderMenuListener;
+import com.github.mczju.mczjuscription.listener.ArenaSlotInteractListener;
 import com.github.mczju.mczjuscription.listener.CardDropPlacementListener;
 import com.github.mczju.mczjuscription.listener.ShopAdminListener;
 import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
@@ -45,10 +47,12 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
         InscriptionRoomSetup.validateAndLog(this);
         MCZJUGameCore.getPlayerDataManager().registerPlayerData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
         getServer().getPluginManager().registerEvents(new MatchListener(), this);
+        getServer().getPluginManager().registerEvents(new ArenaSlotInteractListener(), this);
         getServer().getPluginManager().registerEvents(new MatchEntityProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new CardDropPlacementListener(), this);
         getServer().getPluginManager().registerEvents(new LeaveConfirmListener(), this);
         getServer().getPluginManager().registerEvents(new HubZoneListener(), this);
+        getServer().getPluginManager().registerEvents(new DeckBuilderMenuListener(), this);
         getServer().getPluginManager().registerEvents(new CardDesignerMenuListener(), this);
         getServer().getPluginManager().registerEvents(new ShopAdminListener(), this);
 

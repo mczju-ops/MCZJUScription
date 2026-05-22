@@ -63,13 +63,14 @@ public final class ShopAdminListener implements Listener {
       return false;
     }
     int raw = event.getRawSlot();
-    if (raw < 0 || raw >= ShopAdminPoolMenu.ADD_SLOT || raw >= menu.pool().size()) {
+    int index = menu.poolIndexAt(raw);
+    if (index < 0) {
       return false;
     }
     event.setCancelled(true);
-    ShopPoolEntry entry = menu.pool().get(raw);
-    menu.setSelectedIndex(raw);
-    DialogTextInput.openShopWeight(player, raw, entry.weight());
+    ShopPoolEntry entry = menu.pool().get(index);
+    menu.setSelectedIndex(index);
+    DialogTextInput.openShopWeight(player, index, entry.weight());
     return true;
   }
 
@@ -78,11 +79,12 @@ public final class ShopAdminListener implements Listener {
       return false;
     }
     int raw = event.getRawSlot();
-    if (raw < 0 || raw >= ShopAdminPoolMenu.ADD_SLOT || raw >= menu.pool().size()) {
+    int index = menu.poolIndexAt(raw);
+    if (index < 0) {
       return false;
     }
     event.setCancelled(true);
-    menu.removeAt(raw);
+    menu.removeAt(index);
     return true;
   }
 

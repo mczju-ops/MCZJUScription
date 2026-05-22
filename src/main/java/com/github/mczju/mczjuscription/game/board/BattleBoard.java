@@ -24,6 +24,16 @@ public final class BattleBoard {
         return row;
     }
 
+    {
+        for (BoardSlot slot : playerSlots) slot.attachBoard(this);
+        for (BoardSlot slot : enemySlots) slot.attachBoard(this);
+        for (BoardSlot slot : enemyPreviewSlots) slot.attachBoard(this);
+    }
+
+    public void refreshAllLabels() {
+        CreatureEntityService.refreshBoardLabels(this);
+    }
+
     public BoardSlot playerSlot(int index) {
         return playerSlots[index];
     }
@@ -51,8 +61,11 @@ public final class BattleBoard {
     /**
      * 准备区造物前移进入主战场：仅当对应主战场格为空时前进；
      * 被挡住的预览区造物留在原位。
+     *
+     * @return 成功前移的数量
      */
-    public void advanceEnemyPreview() {
+    public int advanceEnemyPreviewCount() {
+        int moved = 0;
         for (int i = 0; i < BoardSlot.SLOT_COUNT; i++) {
             BoardSlot preview = enemyPreviewSlots[i];
             if (preview.isEmpty()) continue;
@@ -62,7 +75,15 @@ public final class BattleBoard {
             CreatureEntityService.despawn(creature);
             preview.clear();
             creature.bind(enemySlots[i]);
+            moved++;
         }
+        return moved;
+    }
+
+    /** @deprecated 使用 {@link #advanceEnemyPreviewCount()} 并在每步后推进流水线 */
+    @Deprecated
+    public void advanceEnemyPreview() {
+        advanceEnemyPreviewCount();
     }
 
     public void clearCombatRows() {

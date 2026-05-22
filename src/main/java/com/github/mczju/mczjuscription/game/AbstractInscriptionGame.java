@@ -15,7 +15,9 @@ import com.github.mczju.mczjuscription.lobby.InscriptionRunScoring;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.game.AbstractGame;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
+import com.github.mczju.mczjuscription.arena.ResolvedArenaLayout;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
@@ -73,8 +75,9 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
 
         for (ParticipantState participant : match.humanParticipants()) {
             participant.player().ifPresent(ext -> {
-                if (room.spawnAt != null) {
-                    ext.player().teleport(room.spawnAt);
+                var spawn = resolveSpawn(match, room, participant.side());
+                if (spawn != null) {
+                    ext.player().teleport(spawn);
                 }
                 ext.resetState();
                 participant.hand().clear();
@@ -167,6 +170,23 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
 
     public InscriptionMatch match() {
         return match;
+    }
+
+    private static Location resolveSpawn(InscriptionMatch match, InscriptionGameRoom room, MatchSide side) {
+        if (match.arena() != null && match.arena().layout() != null) {
+            ResolvedArenaLayout.StagingSites staging = match.arena().layout().staging(side);
+            if (staging != null && staging.playerSpawn != null) {
+                return staging.playerSpawn.clone();
+            }
+        }
+        // 临时场地（或布局未含出生点）已绑定时不应再解析房间 JSON，避免无效配置二次抛错
+        if (match.arena() != null) {
+            return null;
+        }
+        if (room != null) {
+            return room.spawnFor(side, match.mode());
+        }
+        return null;
     }
 
   private InscriptionGameRoom resolveMatchRoom() {

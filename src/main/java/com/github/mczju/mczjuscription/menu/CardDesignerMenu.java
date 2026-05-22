@@ -11,7 +11,6 @@ import org.bukkit.inventory.ItemStack;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
 import com.github.mczjuops.mczjugamecore.menu.Menu;
 import com.github.mczjuops.mczjugamecore.utils.ItemBuilder;
-import java.util.ArrayList;
 import java.util.List;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -70,7 +69,7 @@ public final class CardDesignerMenu extends Menu {
                     "<gray>当前: <light_purple>" + session.sigilSummary(),
                     "<yellow>点击打开印记列表"))
             .build(),
-        (p, e) -> new CardDesignerSigilMenu(p.player(), this, session).open());
+        (p, e) -> new CardDesignerSigilMenu(p.player(), this, session, 0).open());
 
     setSlot(
         11,
@@ -106,6 +105,17 @@ public final class CardDesignerMenu extends Menu {
         });
 
     setSlot(
+        38,
+        ItemBuilder.of(Material.COD)
+            .customName("<aqua>鱼干代价: <white>" + session.fishCost())
+            .lore(List.of("<gray>左键 +1  <gray>右键 -1", "<dark_gray>保存为鱼干召唤费"))
+            .build(),
+        (p, e) -> {
+          session.addFishCost(e.isLeftClick() ? 1 : -1);
+          reloadEditor();
+        });
+
+    setSlot(
         39,
         ItemBuilder.of(Material.ROTTEN_FLESH)
             .customName("<red>腐肉代价: <white>" + session.bloodCost())
@@ -135,16 +145,15 @@ public final class CardDesignerMenu extends Menu {
                     ? List.of(
                         "<gray>ID: <white>" + editingId,
                         "<yellow>从 cards.yml 移除",
-                        "<gray>内置覆盖将恢复默认",
                         "<red>不可撤销，请确认")
-                    : List.of("<dark_gray>核心内置卡不可删除"))
+                    : List.of("<dark_gray>卡牌不存在"))
             .build(),
         (p, e) -> {
           if (editingId == null) {
             return;
           }
           if (!CardCatalog.canDelete(editingId)) {
-            p.player().sendMessage("§c核心内置卡不可删除（仅可编辑保存覆盖）。");
+            p.player().sendMessage("§c卡牌不存在或已删除。");
             return;
           }
           CardTemplate existing = CardCatalog.get(editingId);
@@ -158,11 +167,6 @@ public final class CardDesignerMenu extends Menu {
                       case REMOVED ->
                           p.player()
                               .sendMessage("§a已删除卡牌 §f" + label + "§a。");
-                      case RESTORED_DEFAULT ->
-                          p.player()
-                              .sendMessage("§a已删除覆盖并恢复内置默认：§f" + editingId + "§a。");
-                      case BUILTIN_PROTECTED ->
-                          p.player().sendMessage("§c该内置卡不可删除。");
                       case NOT_FOUND -> p.player().sendMessage("§c卡牌不存在或已删除。");
                     }
                     session.newCard(CardCatalog.newCustomId());
@@ -178,11 +182,18 @@ public final class CardDesignerMenu extends Menu {
             .lore(List.of("<gray>写入 cards.yml 并热加载"))
             .build(),
         (p, e) -> {
-          if (session.boneCost() > 0 && session.bloodCost() > 0) {
+          if (session.boneCost() > 0
+              && (session.bloodCost() > 0 || session.fishCost() > 0)) {
             p.player()
                 .sendMessage(
-                    "§e骨币与腐肉代价同时大于 0，保存时将优先使用 §f骨币 §e（"
+                    "§e多种代价同时大于 0，保存时将优先使用 §f骨币 §e（"
                         + session.boneCost()
+                        + "）。");
+          } else if (session.fishCost() > 0 && session.bloodCost() > 0) {
+            p.player()
+                .sendMessage(
+                    "§e鱼干与腐肉代价同时大于 0，保存时将优先使用 §f鱼干 §e（"
+                        + session.fishCost()
                         + "）。");
           }
           CardTemplate saved = session.toTemplate(false);
@@ -198,7 +209,7 @@ public final class CardDesignerMenu extends Menu {
             .customName("<yellow>加载已有卡牌")
             .lore(List.of("<gray>打开卡牌列表"))
             .build(),
-        (p, e) -> new CardPickerMenu(p.player(), this).open());
+        (p, e) -> new CardPickerMenu(p.player(), this, 0).open());
 
     setSlot(
         50,
@@ -273,23 +284,29 @@ public final class CardDesignerMenu extends Menu {
   public static final class CardPickerMenu extends Menu {
 
     private final CardDesignerMenu parent;
+    private final int page;
 
-    CardPickerMenu(Player player, CardDesignerMenu parent) {
+    CardPickerMenu(Player player, CardDesignerMenu parent, int page) {
       super(player);
       this.parent = parent;
+      this.page = Math.max(0, page);
     }
 
     @Override
     protected void setup() {
       inventory.clear();
-      List<CardTemplate> templates = new ArrayList<>(CardCatalog.sortedForEditor());
+      List<CardTemplate> templates = CardCatalog.sortedForEditor();
+      int currentPage = MenuPagination.clampPage(page, templates.size());
+      int start = MenuPagination.rangeStart(currentPage);
+      int end = MenuPagination.rangeEnd(currentPage, templates.size());
+
       int slot = 0;
-      for (CardTemplate t : templates) {
-        if (slot >= getRows() * 9 - 9) break;
+      for (int i = start; i < end; i++) {
+        CardTemplate t = templates.get(i);
         setSlot(
             slot++,
             ItemBuilder.of(t.spawnEggMaterial())
-                .customName((t.isBuiltin() ? "<gold>" : "<green>") + t.displayName())
+                .customName("<green>" + t.displayName())
                 .lore(
                     List.of(
                         "<gray>ID: <white>" + t.id(),
@@ -301,15 +318,25 @@ public final class CardDesignerMenu extends Menu {
               parent.open();
             });
       }
+
       setSlot(
-          getRows() * 9 - 5,
-          ItemBuilder.of(Material.ARROW).customName("<gray>返回").build(),
+          49,
+          ItemBuilder.of(Material.ARROW)
+              .customName("<gray>返回")
+              .lore(List.of("<gray>回到卡牌设计器"))
+              .build(),
           (p, e) -> parent.open());
+
+      MenuPagination.placeCornerArrows(
+          this::setSlot,
+          currentPage,
+          templates.size(),
+          nextPage -> new CardPickerMenu(player.player(), parent, nextPage).open());
     }
 
     @Override
     protected String getTitle() {
-      return "选择卡牌模板";
+      return "选择卡牌" + MenuPagination.titleSuffix(page, CardCatalog.sortedForEditor().size());
     }
 
     @Override

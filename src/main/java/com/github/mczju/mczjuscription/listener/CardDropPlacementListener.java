@@ -38,10 +38,21 @@ public final class CardDropPlacementListener implements Listener {
 
     String templateId = resolveTemplateId(event.getItemDrop().getItemStack());
     if (templateId == null) return;
+    if ("mob_fish_dried".equals(templateId)) {
+      event.setCancelled(true);
+      return;
+    }
 
     MatchSide side = match.sideFor(player);
     if (side == null) {
       event.setCancelled(true);
+      return;
+    }
+
+    if (match.arena() != null && match.arena().layout() != null
+        && match.arena().layout().hasUiRow(side)) {
+      event.setCancelled(true);
+      match.feedback().actionBarInfo("<yellow>请左键站场槽位出牌（第一次选中，第二次确认）");
       return;
     }
 

@@ -8,9 +8,11 @@ import com.github.mczju.mczjuscription.game.session.PlayVariant;
 import com.github.mczju.mczjuscription.InscriptionBranding;
 import com.github.mczju.mczjuscription.game.strategy.InscriptionGameWaitStrategy;
 import com.github.mczju.mczjuscription.game.InscriptionPendingMatch;
+import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.lobby.HubDisplayBootstrap;
+import com.github.mczju.mczjuscription.ui.MatchVictoryCelebration;
 import com.github.mczju.mczjuscription.lobby.HubReturnService;
 import com.github.mczju.mczjuscription.lobby.HubSeatService;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
@@ -184,25 +186,34 @@ public final class InscriptionGame extends AbstractInscriptionGame implements Mi
         if (match == null) {
             return;
         }
-        for (ParticipantState human : match.humanParticipants()) {
-            human.player()
-                    .ifPresent(
-                            ext -> {
-                                MatchSide side = match.sideFor(ext.player());
-                                match.feedback().announceVictory(ext, side == winner);
-                            });
-        }
-        recordPlayerStats(winner);
 
         List<PlayerExt> humans = new ArrayList<>();
         for (ParticipantState human : match.humanParticipants()) {
             human.player().ifPresent(humans::add);
         }
 
-        HubReturnService.returnAfterMatch(this, winner, humans);
+        for (ParticipantState human : match.humanParticipants()) {
+            human.player()
+                    .ifPresent(
+                            ext -> {
+                                MatchSide side = match.sideFor(ext.player());
+                                if (side == winner) {
+                                    MatchVictoryCelebration.presentWin(ext);
+                                } else {
+                                    MatchVictoryCelebration.presentLoss(ext);
+                                }
+                            });
+        }
+        recordPlayerStats(winner);
 
-        match.cleanup();
-        match = null;
+        InscriptionMatch finishedMatch = match;
+        MatchVictoryCelebration.begin(
+                humans,
+                () -> {
+                    HubReturnService.returnAfterMatch(this, winner, humans);
+                    finishedMatch.cleanup();
+                    match = null;
+                });
     }
 
     public void refreshHubSession() {
@@ -260,11 +271,7 @@ public final class InscriptionGame extends AbstractInscriptionGame implements Mi
         if (room == null) {
             return;
         }
-        try {
-            HubDisplayBootstrap.sync(room);
-        } catch (Exception ex) {
-            logger.error("大厅展示同步失败: %s".formatted(ex.getMessage()));
-        }
+        HubDisplayBootstrap.sync(room);
     }
 
     @Nullable

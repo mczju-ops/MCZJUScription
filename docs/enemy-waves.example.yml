@@ -1,0 +1,10 @@
+# 副本/选关出怪脚本示例（尚未接入 ScriptEnemyWaveSource.loadFromRoomConfig）
+#
+# 脚本按波定义；运行时会被摊平为单只流水线，顺序进入：
+# 顶栏预览 → 敌方后场 → 站场。每推进一步再随机/按脚本补下一只。
+
+waves:
+  - [mob_rabbit]
+  - [mob_wolf]
+  - [mob_wolf, mob_spider]
+  - [mob_creeper, mob_zombie, mob_skeleton]

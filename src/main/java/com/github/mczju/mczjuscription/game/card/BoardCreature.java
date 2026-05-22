@@ -31,10 +31,6 @@ public final class BoardCreature {
     this.health = CardCatalog.require(templateId).health();
   }
 
-  public BoardCreature(CardId cardId, MatchSide owner) {
-    this(cardId.name(), owner);
-  }
-
   public String displayName() {
     return displayNameOverride != null ? displayNameOverride : template().displayName();
   }
@@ -57,14 +53,6 @@ public final class BoardCreature {
 
   public String templateId() {
     return templateId;
-  }
-
-  public CardId cardId() {
-    try {
-      return CardId.valueOf(templateId);
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
   }
 
   public CardTemplate template() {
@@ -136,6 +124,11 @@ public final class BoardCreature {
   public void markSkipNextAttack() {
     skipNextAttack = true;
     com.github.mczju.mczjuscription.entity.CreatureEntityService.refreshLabel(this);
+    com.github.mczju.mczjuscription.vfx.InkAuraVfx.start(this);
+  }
+
+  public boolean willSkipNextAttack() {
+    return skipNextAttack;
   }
 
   public boolean consumesSkipNextAttack() {
@@ -143,6 +136,7 @@ public final class BoardCreature {
       return false;
     }
     skipNextAttack = false;
+    com.github.mczju.mczjuscription.vfx.InkAuraVfx.stop(this);
     return true;
   }
 

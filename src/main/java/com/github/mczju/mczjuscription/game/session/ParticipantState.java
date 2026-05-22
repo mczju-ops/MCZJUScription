@@ -1,6 +1,5 @@
 package com.github.mczju.mczjuscription.game.session;
 
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.deck.DeckSource;
 import com.github.mczju.mczjuscription.game.match.Currency;
 import com.github.mczju.mczjuscription.game.match.MatchSide;

@@ -6,7 +6,6 @@ import com.github.mczju.mczjuscription.game.board.BoardSlot;
 import com.github.mczju.mczjuscription.game.board.BoardSides;
 import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 

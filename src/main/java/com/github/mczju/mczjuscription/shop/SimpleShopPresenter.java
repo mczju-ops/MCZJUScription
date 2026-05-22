@@ -1,10 +1,11 @@
 package com.github.mczju.mczjuscription.shop;
 
+import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.menu.InscriptionShopMenu;
 
-/** 商店：骨币购卡，抽牌阶段可反复打开。 */
+/** 商店：骨币购卡，整备阶段可反复打开。 */
 public final class SimpleShopPresenter implements ShopPresenter {
 
   @Override
@@ -29,8 +30,9 @@ public final class SimpleShopPresenter implements ShopPresenter {
     ParticipantShopState shop = match.shopState(buyerSide);
 
     if (lane == ShopPurchaseLane.PERMANENT) {
-      if (shop.hasBoughtPermanentThisTurn()) {
-        match.feedback().actionBarWarn("<yellow>本回合已从常驻货架购卡，下回合再来。");
+      if (!shop.canBuyPermanentThisTurn()) {
+        match.feedback().actionBarWarn("<yellow>本回合常驻货架已购 %d 次，下回合再来。"
+            .formatted(ParticipantShopState.MAX_PERMANENT_PER_TURN));
         return false;
       }
     } else {
@@ -62,6 +64,8 @@ public final class SimpleShopPresenter implements ShopPresenter {
       shop.markRotatingSold(rotatingSlotIndex);
     }
     match.completeShopPurchase(buyerSide);
+    match.feedback().actionBarInfo("<green>购得 <white>%s"
+        .formatted(CardCatalog.require(templateId).displayName()));
     return true;
   }
 }

@@ -1,7 +1,12 @@
 package com.github.mczju.mczjuscription.entity;
 
+import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
+import com.github.mczju.mczjuscription.game.board.BattleBoard;
+import com.github.mczju.mczjuscription.game.board.BoardSlot;
+import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.card.CardTemplate;
+import com.github.mczju.mczjuscription.game.combat.CreatureStatModifiers;
 import com.github.mczju.mczjuscription.game.sigil.SigilNames;
 import com.github.mczju.mczjuscription.util.InscriptionKeys;
 import com.github.mczjuops.mczjugamecore.utils.TextParser;
@@ -11,6 +16,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
+import org.bukkit.entity.Boss;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -19,6 +25,8 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -29,8 +37,8 @@ public final class CreatureEntityService {
   private CreatureEntityService() {}
 
   public static void spawn(BoardCreature creature, Location at) {
-    Location spawnAt = at.clone();
-    if (spawnAt.getWorld() == null) {
+    Location spawnAt = CreatureBoardOrientation.applyBoardStand(creature, at);
+    if (spawnAt == null || spawnAt.getWorld() == null) {
       return;
     }
 
@@ -42,14 +50,32 @@ public final class CreatureEntityService {
       return;
     }
     creature.bindEntity(bundle.bodyId(), bundle.labelId());
+    if (creature.willSkipNextAttack()) {
+      com.github.mczju.mczjuscription.vfx.InkAuraVfx.start(creature);
+    }
   }
 
   public static void refreshLabel(BoardCreature creature) {
+    BattleBoard board = creature.slot() != null ? creature.slot().board() : null;
+    refreshLabel(board, creature);
+  }
+
+  public static void refreshLabel(@Nullable BattleBoard board, BoardCreature creature) {
     UUID displayId = creature.displayEntityId();
     if (displayId == null) return;
     Entity entity = findEntity(displayId);
     if (entity instanceof TextDisplay display) {
-      display.text(buildLabel(creature));
+      display.text(buildLabel(board, creature));
+    }
+  }
+
+  public static void refreshBoardLabels(BattleBoard board) {
+    if (board == null) return;
+    for (SlotOwner owner : SlotOwner.values()) {
+      for (BoardSlot slot : board.row(owner)) {
+        if (slot.isEmpty()) continue;
+        refreshLabel(board, slot.creature());
+      }
     }
   }
 
@@ -68,6 +94,7 @@ public final class CreatureEntityService {
   }
 
   public static void despawn(BoardCreature creature) {
+    com.github.mczju.mczjuscription.vfx.InkAuraVfx.stop(creature);
     Entity body = findEntity(creature.entityId());
     if (body != null && body.getVehicle() != null) {
       body.getVehicle().remove();
@@ -118,7 +145,8 @@ public final class CreatureEntityService {
         }
         return null;
       }
-      entity.setRotation(spawnAt.getYaw(), spawnAt.getPitch());
+      CreatureBoardScale.apply(entity, bodyType);
+      CreatureBoardOrientation.applySpawnPose(entity, creature, spawnAt);
       MatchEntityProtection.apply(entity);
       if (mount != null && mount instanceof Mob mountMob) {
         mountMob.addPassenger(entity);
@@ -126,7 +154,7 @@ public final class CreatureEntityService {
       MatchEntityDisplay.tagCreature(entity, creature.instanceId());
 
       TextDisplay label = MatchEntityDisplay.spawnLabel(
-          spawnAt.clone().add(0, entity.getHeight() + LABEL_HEIGHT, 0), buildLabel(creature));
+          spawnAt.clone().add(0, entity.getHeight() + LABEL_HEIGHT, 0), buildLabel(null, creature));
       if (label == null) {
         entity.remove();
         if (mount != null) {
@@ -141,12 +169,16 @@ public final class CreatureEntityService {
   }
 
   private static SpawnBundle spawnFallback(BoardCreature creature, Location spawnAt) {
-    BlockDisplay potato = MatchEntityDisplay.spawnPotatoModel(spawnAt);
+    Location stand = CreatureBoardOrientation.applyBoardStand(creature, spawnAt);
+    if (stand == null) {
+      return null;
+    }
+    BlockDisplay potato = MatchEntityDisplay.spawnPotatoModel(stand);
     if (potato == null) {
       return null;
     }
     MatchEntityDisplay.tagCreature(potato, creature.instanceId());
-    TextDisplay label = MatchEntityDisplay.spawnLabel(spawnAt, buildLabel(creature));
+    TextDisplay label = MatchEntityDisplay.spawnLabel(stand, buildLabel(null, creature));
     if (label == null) {
       potato.remove();
       return null;
@@ -168,19 +200,67 @@ public final class CreatureEntityService {
   @SuppressWarnings("unchecked")
     Class<? extends LivingEntity> livingClass = (Class<? extends LivingEntity>) entityClass;
     try {
-      return world.spawn(at, livingClass, SpawnReason.CUSTOM, entity -> MatchEntityProtection.apply(entity));
+      LivingEntity spawned =
+          world.spawn(
+              at,
+              livingClass,
+              SpawnReason.CUSTOM,
+              entity -> MatchEntityProtection.apply(entity));
+      if (spawned instanceof Boss) {
+        MCZJUScriptionPlugin plugin = MCZJUScriptionPlugin.getInstance();
+        if (plugin != null) {
+          Bukkit.getScheduler()
+              .runTaskLater(plugin, () -> MatchEntityProtection.hideBossBar(spawned), 1L);
+        }
+      }
+      return spawned;
     } catch (RuntimeException ex) {
       return null;
     }
   }
 
-  private static Component buildLabel(BoardCreature creature) {
+  private static Component buildLabel(@Nullable BattleBoard board, BoardCreature creature) {
     String line1 = "<white><bold>%s".formatted(creature.displayName());
+    int powerBaseline = creature.template().power();
+    int effectivePower = CreatureStatModifiers.effectivePower(board, creature);
+    int healthBaseline = healthBaseline(creature);
     String line2 =
-        "<red>生命 %d  <gold>力量 %d".formatted(creature.health(), creature.currentPower());
+        "<red>生命 %s  <gold>力量 %s"
+            .formatted(formatHealthNumber(creature), formatStatNumber(effectivePower, powerBaseline));
     String line3 =
         "<dark_purple>印记: <light_purple>%s".formatted(SigilNames.join(creature.activeSigils()));
     return TextParser.parseNonItalic(line1 + "\n" + line2 + "\n" + line3);
+  }
+
+  private static int healthBaseline(BoardCreature creature) {
+    int baseline = creature.template().health();
+    if (creature.hasMaturedFromFledgling()) {
+      baseline += 1;
+    }
+    return baseline;
+  }
+
+  private static String formatHealthNumber(BoardCreature creature) {
+    int baseline = healthBaseline(creature);
+    int current = creature.health();
+    if (current > baseline) {
+      return "<blue>%d".formatted(current);
+    }
+    if (current < baseline) {
+      return "<gold>%d".formatted(current);
+    }
+    return "<gold>%d".formatted(current);
+  }
+
+  /** 相对卡牌基础值：变低红色，变高蓝色，不变金色。 */
+  private static String formatStatNumber(int value, int baseline) {
+    if (value > baseline) {
+      return "<blue>%d".formatted(value);
+    }
+    if (value < baseline) {
+      return "<red>%d".formatted(value);
+    }
+    return "<gold>%d".formatted(value);
   }
 
   private static void removeIfPresent(UUID id) {

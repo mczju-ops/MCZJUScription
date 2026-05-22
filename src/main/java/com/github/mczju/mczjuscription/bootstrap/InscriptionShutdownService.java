@@ -2,13 +2,12 @@ package com.github.mczju.mczjuscription.bootstrap;
 
 import com.github.mczju.mczjuscription.arena.ArenaManager;
 import com.github.mczju.mczjuscription.entity.CreatureEntityService;
-import com.github.mczju.mczjuscription.entity.MatchEntityProtection;
+import com.github.mczju.mczjuscription.vfx.InkAuraVfx;
 import com.github.mczju.mczjuscription.game.InscriptionGame;
 import com.github.mczju.mczjuscription.game.InscriptionGameRoom;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.lobby.HubSeatMarkerService;
 import com.github.mczju.mczjuscription.lobby.HubSession;
-import com.github.mczju.mczjuscription.lobby.HubSignageService;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.game.AbstractGame;
 import com.github.mczjuops.mczjugamecore.game.manager.AbstractGameManager;
@@ -37,6 +36,7 @@ public final class InscriptionShutdownService {
         int hubDecor = despawnAllHubDecor();
         HubSession.shutdownAll();
         ArenaManager.cleanupAll();
+        InkAuraVfx.stopAll();
         int entities = CreatureEntityService.purgeAllPluginEntities();
         if (games > 0 || rooms > 0 || hubDecor > 0 || entities > 0) {
             logger.info(
@@ -118,7 +118,6 @@ public final class InscriptionShutdownService {
                 continue;
             }
             HubSeatMarkerService.despawn(room);
-            HubSignageService.despawn(room);
             count++;
         }
         return count;

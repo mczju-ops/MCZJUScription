@@ -15,7 +15,10 @@ public final class PreviewAdvanceSequence {
 
     public static void run(InscriptionMatch match, Runnable onComplete) {
         if (match.arena() == null) {
-            match.board().advanceEnemyPreview();
+            int moved = match.board().advanceEnemyPreviewCount();
+            for (int i = 0; i < moved; i++) {
+                match.notifyEnemyBackfieldWaveAdvanced();
+            }
             if (onComplete != null) onComplete.run();
             return;
         }
@@ -76,6 +79,7 @@ public final class PreviewAdvanceSequence {
             preview.clear();
         }
         step.creature.bind(match.board().enemySlot(step.slotIndex));
+        match.notifyEnemyBackfieldWaveAdvanced();
     }
 
     private record Advance(BoardCreature creature, int slotIndex, org.bukkit.Location from, org.bukkit.Location to) {}

@@ -7,6 +7,7 @@ import com.github.mczjuops.mczjugamecore.item.MGCItem;
 import com.github.mczjuops.mczjugamecore.utils.ItemBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 public final class InscriptionCardItem extends MGCItem {
@@ -17,10 +18,6 @@ public final class InscriptionCardItem extends MGCItem {
   public InscriptionCardItem(String templateId) {
     this.templateId = templateId;
     this.itemId = InscriptionItems.cardItemId(templateId);
-  }
-
-  public InscriptionCardItem(com.github.mczju.mczjuscription.game.card.CardId cardId) {
-    this(cardId.name());
   }
 
   @Override
@@ -43,7 +40,7 @@ public final class InscriptionCardItem extends MGCItem {
     }
     lore.add("<dark_gray>ID: " + templateId);
     lore.add("<dark_gray>丢弃到己方槽位方块上召唤");
-    return ItemBuilder.of(def.spawnEggMaterial())
+    return ItemBuilder.of(cardMaterial(def))
         .customName("<white>" + def.displayName())
         .lore(lore)
         .maxStackSize(16)
@@ -55,6 +52,14 @@ public final class InscriptionCardItem extends MGCItem {
       case FREE -> "<green>花费：免费";
       case BLOOD -> "<red>花费：腐肉 ×%d".formatted(def.cost());
       case BONES -> "<gold>花费：骨币 ×%d".formatted(def.cost());
+      case FISH -> "<aqua>花费：鱼干 ×%d".formatted(def.cost());
     };
+  }
+
+  private static Material cardMaterial(CardTemplate def) {
+    if ("mob_fish_dried".equals(def.id())) {
+      return Material.COD;
+    }
+    return def.spawnEggMaterial();
   }
 }

@@ -39,8 +39,8 @@ public final class CardTemplate {
     this.builtin = false;
   }
 
-  public static CardTemplate fromDefinition(CardId cardId, CardDefinition def) {
-    CardTemplate t = new CardTemplate(cardId.name());
+  public static CardTemplate fromDefinition(String id, CardDefinition def) {
+    CardTemplate t = new CardTemplate(id);
     t.displayName = def.displayName();
     t.entityType = def.entityType();
     t.power = def.power();
@@ -49,7 +49,7 @@ public final class CardTemplate {
     t.cost = def.cost();
     t.sacrificeValue = def.sacrificeValue();
     t.sigils = new ArrayList<>(def.sigils());
-    t.builtin = true;
+    t.builtin = false;
     return t;
   }
 
@@ -179,16 +179,10 @@ public final class CardTemplate {
     return SigilNames.join(EnumSet.copyOf(sigils));
   }
 
-  /** 供仍使用 {@link CardDefinition} 的路径（逐步淘汰）。 */
+  /** 供仍使用 {@link CardDefinition} 的路径。 */
   public CardDefinition toDefinition() {
-    CardId enumId;
-    try {
-      enumId = CardId.valueOf(id);
-    } catch (IllegalArgumentException e) {
-      enumId = CardId.RABBIT;
-    }
     var b =
-        CardDefinition.builder(enumId)
+        CardDefinition.builder(id)
             .displayName(displayName)
             .entity(entityType)
             .stats(power, health)

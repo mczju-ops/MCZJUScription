@@ -18,6 +18,18 @@ public final class InscriptionKeys {
     public static NamespacedKey MATCH_DISPLAY;
     /** 流浪商人实体（含展示实体保底） */
     public static NamespacedKey WANDERING_TRADER;
+    /** 商店模式常驻村民 */
+    public static NamespacedKey SHOP_VILLAGER;
+    /** 商店村民所属阵营 */
+    public static NamespacedKey SHOP_VILLAGER_SIDE;
+    /** 兔子堆箱内待领取的展示兔 */
+    public static NamespacedKey RABBIT_CHEST;
+    /** 兔子堆箱所属阵营 */
+    public static NamespacedKey RABBIT_CHEST_SIDE;
+    /** UI 槽位所属阵营（PLAYER / ENEMY） */
+    public static NamespacedKey UI_SLOT_SIDE;
+    /** 踏板高亮状态：normal / selected / confirmed */
+    public static NamespacedKey PEDAL_HIGHLIGHT;
 
     private InscriptionKeys() {}
 
@@ -32,5 +44,11 @@ public final class InscriptionKeys {
         HUB_SEAT_MARKER = new NamespacedKey(plugin, "hub_seat_marker");
         MATCH_DISPLAY = new NamespacedKey(plugin, "match_display");
         WANDERING_TRADER = new NamespacedKey(plugin, "wandering_trader");
+        SHOP_VILLAGER = new NamespacedKey(plugin, "shop_villager");
+        SHOP_VILLAGER_SIDE = new NamespacedKey(plugin, "shop_villager_side");
+        RABBIT_CHEST = new NamespacedKey(plugin, "rabbit_chest");
+        RABBIT_CHEST_SIDE = new NamespacedKey(plugin, "rabbit_chest_side");
+        UI_SLOT_SIDE = new NamespacedKey(plugin, "ui_slot_side");
+        PEDAL_HIGHLIGHT = new NamespacedKey(plugin, "pedal_highlight");
     }
 }

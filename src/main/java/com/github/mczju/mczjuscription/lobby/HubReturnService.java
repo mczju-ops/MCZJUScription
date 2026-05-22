@@ -37,14 +37,12 @@ public final class HubReturnService {
         for (PlayerExt player : humans) {
             InscriptionItems.stripPlayerInventory(player.player());
             MatchSide side = game.match() != null ? game.match().sideFor(player.player()) : null;
-            if (side != null) {
-                if (side == winner) {
-                    player.sender().info("<green>对局胜利！<gray>已返回等待大厅。");
-                } else {
-                    player.sender().warn("<red>对局失败。<gray>已返回等待大厅，可重新选座开局。");
-                }
+            if (side != null && side != winner) {
+                player.sender().warn("<gray>已回到大厅，可重新选座再战。");
+            } else if (side != null) {
+                player.sender().info("<gray>已回到大厅。");
             } else {
-                player.sender().info("<gray>已返回等待大厅。");
+                player.sender().info("<gray>已回到大厅。");
             }
         }
 

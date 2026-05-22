@@ -9,12 +9,15 @@ public final class ParticipantShopState {
 
   private final List<ShopOffer> rotating = new ArrayList<>();
   private final boolean[] rotatingSoldThisTurn = new boolean[ShopConfig.MAX_ROTATING_SLOTS];
-  private boolean permanentPurchasedThisTurn;
+  /** 本回合已从常驻货架购卡次数（上限 {@link #MAX_PERMANENT_PER_TURN}）。 */
+  private int permanentPurchasesThisTurn;
   /** 本局是否已花腐肉解锁第 4 个刷新格。 */
   private boolean extraRotatingSlotUnlocked;
 
+  public static final int MAX_PERMANENT_PER_TURN = 2;
+
   public void refreshFromConfig(ShopConfig config) {
-    permanentPurchasedThisTurn = false;
+    permanentPurchasesThisTurn = 0;
     Arrays.fill(rotatingSoldThisTurn, false);
     rotating.clear();
     rotating.addAll(config.rollRotatingOffers());
@@ -59,11 +62,21 @@ public final class ParticipantShopState {
     }
   }
 
+  public int permanentPurchasesThisTurn() {
+    return permanentPurchasesThisTurn;
+  }
+
+  public boolean canBuyPermanentThisTurn() {
+    return permanentPurchasesThisTurn < MAX_PERMANENT_PER_TURN;
+  }
+
+  /** @deprecated 使用 {@link #canBuyPermanentThisTurn()} */
+  @Deprecated
   public boolean hasBoughtPermanentThisTurn() {
-    return permanentPurchasedThisTurn;
+    return !canBuyPermanentThisTurn();
   }
 
   public void markPermanentPurchased() {
-    permanentPurchasedThisTurn = true;
+    permanentPurchasesThisTurn++;
   }
 }

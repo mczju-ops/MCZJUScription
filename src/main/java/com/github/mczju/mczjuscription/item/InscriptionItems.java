@@ -1,7 +1,6 @@
 package com.github.mczju.mczjuscription.item;
 
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
-import com.github.mczju.mczjuscription.game.card.CardId;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.ui.MatchHotbar;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
@@ -24,13 +23,12 @@ public final class InscriptionItems {
   private static InscriptionToolItem drawDeck;
   private static InscriptionToolItem shopDeck;
   private static InscriptionToolItem rabbitPile;
+  private static InscriptionToolItem sigilManual;
 
   private InscriptionItems() {}
 
   public static void registerAll() {
-    for (CardId id : CardId.values()) {
-      registerCard(id.name());
-    }
+    registerAllCards();
     sacrificeSword =
         new InscriptionToolItem(
             PREFIX + "sacrifice_sword",
@@ -55,10 +53,23 @@ public final class InscriptionItems {
             Material.CHEST,
             "<gold>兔子堆",
             List.of("<gray>每回合一次，抽一张免费兔子"));
+    sigilManual =
+        new InscriptionToolItem(
+            PREFIX + "sigil_manual",
+            Material.KNOWLEDGE_BOOK,
+            "<light_purple>印记说明书",
+            List.of("<gray>右键查看所有印记效果", "<dark_gray>对局中可随时查阅"));
     register(sacrificeSword);
     register(drawDeck);
     register(shopDeck);
     register(rabbitPile);
+    register(sigilManual);
+  }
+
+  public static void registerAllCards() {
+    for (var template : CardCatalog.all()) {
+      registerCard(template.id());
+    }
   }
 
   private static void register(MGCItem item) {
@@ -73,10 +84,6 @@ public final class InscriptionItems {
 
   public static String cardItemId(String templateId) {
     return PREFIX + "card:" + templateId.toLowerCase();
-  }
-
-  public static String cardItemId(CardId cardId) {
-    return cardItemId(cardId.name());
   }
 
   public static String parseTemplateId(String itemId) {
@@ -98,10 +105,6 @@ public final class InscriptionItems {
         });
   }
 
-  public static InscriptionCardItem card(CardId cardId) {
-    return card(cardId.name());
-  }
-
   public static InscriptionToolItem sacrificeSword() {
     return sacrificeSword;
   }
@@ -118,6 +121,32 @@ public final class InscriptionItems {
     return rabbitPile;
   }
 
+  public static InscriptionToolItem sigilManual() {
+    return sigilManual;
+  }
+
+  /** 将卡牌放入手牌区（避开工具/资源格，且不会被 HUD 同步清掉）。 */
+  public static void giveCardToHand(
+      org.bukkit.entity.Player player, String templateId, DeckMode deckMode) {
+    ItemStack stack = card(templateId).getItem();
+    var inv = player.getInventory();
+    for (int slot : MatchHotbar.handCardSlots(deckMode)) {
+      ItemStack at = inv.getItem(slot);
+      if (at == null || at.getType().isAir()) {
+        inv.setItem(slot, stack);
+        return;
+      }
+      if (at.isSimilar(stack) && at.getAmount() < at.getMaxStackSize()) {
+        at.setAmount(at.getAmount() + 1);
+        return;
+      }
+    }
+    var leftover = inv.addItem(stack);
+    if (!leftover.isEmpty()) {
+      player.getWorld().dropItemNaturally(player.getLocation(), stack);
+    }
+  }
+
   public static void stripPlayerInventory(org.bukkit.entity.Player player) {
     com.github.mczju.mczjuscription.ui.ResourceHotbar.clear(player);
     InscriptionItemUtil.clearAllInscriptionItems(player);
@@ -127,7 +156,7 @@ public final class InscriptionItems {
     ItemManager manager = MCZJUGameCore.getItemManager();
     var inv = player.getInventory();
     for (int i = 0; i < inv.getSize(); i++) {
-      if (MatchHotbar.isReservedToolSlot(i) || MatchHotbar.isResourceSlot(i)) {
+      if (MatchHotbar.isReservedToolSlot(i)) {
         continue;
       }
       ItemStack stack = inv.getItem(i);
@@ -138,7 +167,7 @@ public final class InscriptionItems {
       }
     }
     for (String templateId : hand) {
-      player.getInventory().addItem(card(templateId).getItem());
+      giveCardToHand(player, templateId, DeckMode.FREE_BUILD);
     }
   }
 

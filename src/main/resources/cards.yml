@@ -141,7 +141,7 @@ cards:
     entityType: COD
     power: 0
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [FISH_BAIT]
@@ -174,7 +174,7 @@ cards:
     entityType: DOLPHIN
     power: 2
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [WATER_STRIKE, FISH_BAIT]
@@ -207,7 +207,7 @@ cards:
     entityType: ELDER_GUARDIAN
     power: 1
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [INTIMIDATE]
@@ -317,7 +317,7 @@ cards:
     entityType: GUARDIAN
     power: 1
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [WATER_STRIKE, BEAM]
@@ -476,7 +476,7 @@ cards:
     costType: BLOOD
     cost: 1
     sacrificeValue: 1
-    sigils: [STINKY_FAR]
+    sigils: [STINKY]
     builtin: false
 
   mob_piglin:
@@ -518,7 +518,7 @@ cards:
     entityType: POLAR_BEAR
     power: 1
     health: 3
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [ALL_STRIKE]
@@ -529,7 +529,7 @@ cards:
     entityType: PUFFERFISH
     power: 0
     health: 2
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [SPIKY_ARMOR]
@@ -562,7 +562,7 @@ cards:
     entityType: SALMON
     power: 1
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [WATER_STRIKE, FISH_BAIT]
@@ -740,7 +740,7 @@ cards:
     entityType: TROPICAL_FISH
     power: 1
     health: 1
-    costType: BLOOD
+    costType: FISH
     cost: 1
     sacrificeValue: 1
     sigils: [FISH_BAIT, SCORCH]

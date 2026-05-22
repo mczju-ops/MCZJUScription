@@ -9,6 +9,7 @@ public final class BoardSlot {
 
     private final SlotOwner owner;
     private final int index;
+    private BattleBoard board;
     private BoardCreature creature;
 
     public BoardSlot(SlotOwner owner, int index) {
@@ -25,6 +26,14 @@ public final class BoardSlot {
 
     public int index() {
         return index;
+    }
+
+    void attachBoard(BattleBoard board) {
+        this.board = board;
+    }
+
+    public BattleBoard board() {
+        return board;
     }
 
     public boolean isEmpty() {

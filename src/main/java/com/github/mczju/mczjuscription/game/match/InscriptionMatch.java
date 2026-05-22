@@ -15,8 +15,6 @@ import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardDefinition;
-import com.github.mczju.mczjuscription.game.card.CardId;
-import com.github.mczju.mczjuscription.game.card.CardRegistry;
 import com.github.mczju.mczjuscription.game.card.CostType;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.MatchMode;
@@ -36,11 +34,11 @@ import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
 import java.util.EnumMap;
 import com.github.mczju.mczjuscription.game.combat.BeamCombatSession;
 import com.github.mczju.mczjuscription.game.combat.BeamTargeting;
+import com.github.mczju.mczjuscription.game.combat.CombatModifiers;
 import com.github.mczju.mczjuscription.game.turn.TurnController;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.ui.MatchFeedback;
 import com.github.mczju.mczjuscription.ui.MatchHotbar;
-import com.github.mczju.mczjuscription.ui.ResourceHotbar;
 import com.github.mczju.mczjuscription.ui.ScalesBossBar;
 import com.github.mczju.mczjuscription.util.InscriptionKeys;
 import com.github.mczju.mczjuscription.vfx.BoardVfx;
@@ -80,8 +78,11 @@ public final class InscriptionMatch {
     private boolean matchOver;
     private MatchSide matchWinner;
     private boolean combatAnimating;
+    /** 天平在本轮战斗中已决出小局（±5）时置位，用于截断连击等多段攻击。 */
+    private boolean roundResolvedDuringCombat;
     private BeamCombatSession beamSession;
     private UUID wanderingTraderEntityId;
+    private final EnumMap<MatchSide, UUID> shopVillagerEntityIds = new EnumMap<>(MatchSide.class);
     private final EnumMap<MatchSide, ParticipantShopState> shopStates = new EnumMap<>(MatchSide.class);
 
     public InscriptionMatch(AbstractInscriptionGame game, MatchSetup setup) {
@@ -152,7 +153,16 @@ public final class InscriptionMatch {
     public void start() {
         OpeningHandDealer.deal(this);
         refreshShopOffers();
-        turn.enterPhase(com.github.mczju.mczjuscription.game.turn.TurnPhase.DRAW);
+        if (setup.deckMode() == DeckMode.SHOP && !usesUnifiedShopSlot()) {
+            com.github.mczju.mczjuscription.shop.ShopVillagerService.spawnShopVillagers(this);
+        }
+        turn.enterPhase(
+                setup.deckMode() == DeckMode.SHOP
+                        ? com.github.mczju.mczjuscription.game.turn.TurnPhase.PLAY
+                        : com.github.mczju.mczjuscription.game.turn.TurnPhase.DRAW);
+        if (opponentController != null) {
+            opponentController.onMatchStart(this);
+        }
         planOpponentPreview();
         syncHud();
         if (arena == null) {
@@ -283,6 +293,19 @@ public final class InscriptionMatch {
         return matchOver;
     }
 
+    public boolean roundResolvedDuringCombat() {
+        return roundResolvedDuringCombat;
+    }
+
+    /** 整局结束，或本敲钟战斗内小局已分出胜负。 */
+    public boolean shouldStopCombatSequence() {
+        return matchOver || roundResolvedDuringCombat;
+    }
+
+    public void clearRoundResolvedDuringCombat() {
+        roundResolvedDuringCombat = false;
+    }
+
     public boolean isCombatAnimating() {
         return combatAnimating;
     }
@@ -307,6 +330,18 @@ public final class InscriptionMatch {
         this.wanderingTraderEntityId = wanderingTraderEntityId;
     }
 
+    public UUID shopVillagerEntityId(MatchSide side) {
+        return shopVillagerEntityIds.get(side);
+    }
+
+    public void setShopVillagerEntityId(MatchSide side, UUID entityId) {
+        if (entityId == null) {
+            shopVillagerEntityIds.remove(side);
+        } else {
+            shopVillagerEntityIds.put(side, entityId);
+        }
+    }
+
     public MatchSide matchWinner() {
         return matchWinner;
     }
@@ -314,6 +349,27 @@ public final class InscriptionMatch {
     public void planOpponentPreview() {
         if (opponentController != null) {
             opponentController.planPreview(this);
+        }
+        if (arena != null) {
+            arena.refreshPreviewStrip(this);
+        }
+    }
+
+    /** 顶栏 2×11：下一只将进入后场的造物模板 id。 */
+    public List<String> enemyStripPreviewTemplates() {
+        if (opponentController == null) {
+            return List.of();
+        }
+        return opponentController.stripPreviewTemplates(this);
+    }
+
+    /** 后场→站场每推进一步：roll 并入队，顶栏→后场，队首→顶栏。 */
+    public void notifyEnemyBackfieldWaveAdvanced() {
+        if (opponentController != null) {
+            opponentController.onBackfieldWaveAdvanced(this);
+        }
+        if (arena != null) {
+            arena.refreshPreviewStrip(this);
         }
     }
 
@@ -339,20 +395,34 @@ public final class InscriptionMatch {
         syncHud();
     }
 
-    public void drawFromRabbitPile(MatchSide side) {
+    public boolean drawFromRabbitPile(MatchSide side) {
+        if (setup.deckMode() == DeckMode.SHOP) {
+            feedback.actionBarWarn("<yellow>商店模式请在商店槽位购卡");
+            return false;
+        }
         if (side != actingSide()) {
             feedback.actionBarWarn("<yellow>不是你的回合");
-            return;
+            return false;
+        }
+        if (turn.hasDrawnFromRabbitPileThisTurn()) {
+            feedback.actionBarWarn("<yellow>本回合已领过免费兔子");
+            return false;
         }
         if (!turn.canDrawFromRabbitPile()) {
-            return;
+            feedback.actionBarWarn("<yellow>当前无法领取兔子");
+            return false;
         }
         grantCardToHand(side, "mob_rabbit");
         turn.onDrawFromRabbitPile();
+        return true;
     }
 
-    public void grantCardToHand(MatchSide side, CardId cardId) {
-        grantCardToHand(side, cardId.name());
+    private boolean usesUnifiedShopSlot() {
+        if (arena == null || arena.layout() == null) {
+            return false;
+        }
+        var staging = arena.layout().staging(MatchSide.PLAYER);
+        return staging != null && staging.shopSlot != null;
     }
 
     public void grantCardToHand(MatchSide side, String templateId) {
@@ -360,22 +430,14 @@ public final class InscriptionMatch {
         syncHud();
     }
 
-    public void grantCardToHandSilent(MatchSide side, CardId cardId) {
-        grantCardToHandSilent(side, cardId.name());
-    }
-
     public void grantCardToHandSilent(MatchSide side, String templateId) {
         CardCatalog.require(templateId);
         ParticipantState state = participant(side);
         state.hand().add(templateId);
         state.player().ifPresent(ext ->
-                ext.player().getInventory().addItem(InscriptionItems.card(templateId).getItem())
+                InscriptionItems.giveCardToHand(ext.player(), templateId, deckMode())
         );
         com.github.mczju.mczjuscription.game.sigil.SurpriseEntry.tryAutoSummon(this, side, templateId);
-    }
-
-    public boolean playCardToSlot(CardId cardId, int slotIndex, MatchSide actingSide) {
-        return playCardToSlot(cardId.name(), slotIndex, actingSide, null);
     }
 
     public boolean playCardToSlot(String templateId, int slotIndex, MatchSide actingSide) {
@@ -396,6 +458,10 @@ public final class InscriptionMatch {
         }
         if (arena == null) {
             feedback.actionBarWarn("<yellow>场地未就绪");
+            return false;
+        }
+        if ("mob_fish_dried".equals(templateId)) {
+            feedback.actionBarWarn("<yellow>鱼干是代币，不能当作卡牌上场");
             return false;
         }
 
@@ -457,6 +523,11 @@ public final class InscriptionMatch {
         Location spawnAt = ArenaFacing.withYawToward(loc, ArenaFacing.facingTarget(arena, owner, index));
         BoardVfx.playSpawn(spawnAt);
         CreatureEntityService.spawn(creature, spawnAt);
+        refreshCreatureLabels();
+    }
+
+    public void refreshCreatureLabels() {
+        board.refreshAllLabels();
     }
 
     /** 敌方预览区造物前移落场，并播放移动粒子。 */
@@ -481,6 +552,7 @@ public final class InscriptionMatch {
             preview.clear();
             creature.bind(board.enemySlot(i));
         }
+        refreshCreatureLabels();
     }
 
     public BoardCreature findCreatureByEntity(UUID entityId) {
@@ -539,13 +611,20 @@ public final class InscriptionMatch {
                 }
                 yield true;
             }
+            case FISH -> {
+                if (!currency.trySpendFish(def.cost())) {
+                    feedback.actionBarWarn("<red>鱼干不足 ×%d".formatted(def.cost()));
+                    yield false;
+                }
+                yield true;
+            }
         };
     }
 
     private void removeCardItemFromInventory(Player bukkit, String templateId) {
         String itemId = InscriptionItems.cardItemId(templateId);
         for (int i = 0; i < bukkit.getInventory().getSize(); i++) {
-            if (MatchHotbar.isLockedSlot(i)) continue;
+            if (MatchHotbar.isLockedSlot(i, deckMode())) continue;
             ItemStack stack = bukkit.getInventory().getItem(i);
             if (MCZJUGameCore.getItemManager().is(stack, itemId)) {
                 int amount = stack.getAmount();
@@ -588,6 +667,25 @@ public final class InscriptionMatch {
         syncHud();
     }
 
+    /** 对场上造物造成伤害；生命归零时按 killer 方结算死亡（护盾、硬壳等同战斗伤害）。 */
+    public void damageCreature(BoardCreature creature, int amount, MatchSide killerSide) {
+        if (creature == null || amount <= 0 || creature.isDead()) {
+            return;
+        }
+        BoardSlot slot = creature.slot();
+        if (slot == null || slot.isEmpty() || slot.creature() != creature) {
+            return;
+        }
+        if (creature.absorbFirstHitWithShield()) {
+            return;
+        }
+        int dmg = CombatModifiers.capIncomingDamage(creature, amount);
+        creature.damage(dmg);
+        if (creature.isDead()) {
+            killCreature(creature, killerSide, false);
+        }
+    }
+
     public void killCreature(BoardCreature creature, MatchSide killer, boolean fromHammer) {
         BoardSlot slotBefore = creature.slot();
         SigilRegistry.fire(SigilTrigger.ON_DEATH, new SigilContext(this, SigilTrigger.ON_DEATH, creature, null, 0));
@@ -617,8 +715,8 @@ public final class InscriptionMatch {
         currency(side).addBones(amount);
     }
 
-    public void replaceWith(BoardSlot slot, CardId cardId, MatchSide owner) {
-        replaceWith(slot, cardId.name(), owner);
+    public void grantFish(MatchSide side, int amount) {
+        currency(side).addFish(amount);
     }
 
     public void replaceWith(BoardSlot slot, String templateId, MatchSide owner) {
@@ -649,6 +747,7 @@ public final class InscriptionMatch {
         if (slot != null && slot.creature() == creature) {
             slot.clear();
         }
+        refreshCreatureLabels();
     }
 
     public void despawnAllOnBoard() {
@@ -667,12 +766,18 @@ public final class InscriptionMatch {
         MatchSide roundWinner = scales.checkRoundWinner();
         if (roundWinner == null) return;
 
+        roundResolvedDuringCombat = true;
+        BeamTargeting.cancel(this);
+
         MatchSide loser = roundWinner.opposite();
         life.extinguish(loser);
         feedback.announceRoundWon(describeSide(loser));
 
         scales.reset();
         despawnAllOnBoard();
+        if (opponentController != null) {
+            opponentController.onRoundReset(this);
+        }
 
         if (life.isDefeated(loser)) {
             finishMatch(roundWinner);
@@ -715,6 +820,7 @@ public final class InscriptionMatch {
         }
         despawnAllOnBoard();
         com.github.mczju.mczjuscription.roguelike.WanderingTraderService.despawnTrader(this);
+        com.github.mczju.mczjuscription.shop.ShopVillagerService.despawnAllShopVillagers(this);
         breedingTracker.clear();
         ArenaManager.cleanupAll();
         arena = null;
@@ -722,11 +828,11 @@ public final class InscriptionMatch {
 
     public void syncHud() {
         if (matchOver) return;
+        if (arena != null) {
+            arena.refreshUiDisplays(this);
+        }
         for (ParticipantState human : humanParticipants()) {
-            human.player().ifPresent(ext -> {
-                MatchHotbar.placeTools(ext.player(), deckMode());
-                ResourceHotbar.sync(ext.player(), human.currency());
-            });
+            human.player().ifPresent(ext -> MatchHotbar.placeTools(ext.player(), deckMode()));
         }
     }
 

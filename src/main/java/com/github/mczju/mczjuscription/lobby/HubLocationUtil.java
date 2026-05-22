@@ -95,46 +95,4 @@ public final class HubLocationUtil {
         }
         return -1;
     }
-
-    public static List<HubSign> signs(InscriptionGameRoom room) {
-        List<HubSign> list = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            Location at = signAt(room, i);
-            String text = signText(room, i);
-            if (at != null && text != null && !text.isBlank()) {
-                list.add(new HubSign(i, at, text));
-            }
-        }
-        return list;
-    }
-
-    private static Location signAt(InscriptionGameRoom room, int i) {
-        return switch (i) {
-            case 0 -> room.signAt0;
-            case 1 -> room.signAt1;
-            case 2 -> room.signAt2;
-            case 3 -> room.signAt3;
-            case 4 -> room.signAt4;
-            case 5 -> room.signAt5;
-            case 6 -> room.signAt6;
-            case 7 -> room.signAt7;
-            default -> null;
-        };
-    }
-
-    private static String signText(InscriptionGameRoom room, int i) {
-        return switch (i) {
-            case 0 -> room.signText0;
-            case 1 -> room.signText1;
-            case 2 -> room.signText2;
-            case 3 -> room.signText3;
-            case 4 -> room.signText4;
-            case 5 -> room.signText5;
-            case 6 -> room.signText6;
-            case 7 -> room.signText7;
-            default -> null;
-        };
-    }
-
-    public record HubSign(int index, Location at, String text) {}
 }

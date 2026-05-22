@@ -1,6 +1,7 @@
 package com.github.mczju.mczjuscription.ui;
 
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
+import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.game.turn.TurnPhase;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
@@ -15,7 +16,11 @@ public final class MatchFeedback {
     }
 
     public void announcePhase(TurnPhase phase, int turnNumber) {
-        chatAll("<gray>第 %d 回合 · <aqua>%s".formatted(turnNumber, phase.displayName()));
+        String label = phase.displayName();
+        if (match.deckMode() == DeckMode.SHOP && phase == TurnPhase.PLAY) {
+            label = "整备阶段";
+        }
+        chatAll("<gray>第 %d 回合 · <aqua>%s".formatted(turnNumber, label));
     }
 
     public void announceRoundWon(String loserLabel) {

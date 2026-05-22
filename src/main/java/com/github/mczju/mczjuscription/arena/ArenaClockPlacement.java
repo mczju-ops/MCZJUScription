@@ -1,15 +1,16 @@
 package com.github.mczju.mczjuscription.arena;
 
+import com.github.mczju.mczjuscription.game.match.MatchSide;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 
-/** 判断玩家交互是否落在房间配置的钟方块上。 */
+/** 判断玩家交互是否落在敲钟方块上。 */
 public final class ArenaClockPlacement {
 
     private ArenaClockPlacement() {}
 
-    public static boolean isClockBlock(BattleArena arena, Block block) {
-        return arena != null && arena.isClockBlock(block);
+    public static boolean isClockBlock(BattleArena arena, Block block, MatchSide side) {
+        return arena != null && side != null && arena.isClockBlock(block, side);
     }
 
     public static boolean isClockInteract(Location interactPoint, Location clockCenter) {

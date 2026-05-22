@@ -71,8 +71,14 @@ public final class SigilDescriptions {
   private SigilDescriptions() {}
 
   public static List<SigilId> implementedForDesigner() {
+    return allSortedByDisplayName();
+  }
+
+  public static List<SigilId> allSortedByDisplayName() {
     return EnumSet.allOf(SigilId.class).stream()
-        .sorted(java.util.Comparator.comparing(Enum::name))
+        .sorted(
+            java.util.Comparator.comparing(SigilNames::display)
+                .thenComparing(Enum::name))
         .toList();
   }
 
@@ -100,13 +106,12 @@ public final class SigilDescriptions {
       case SPIKY_ARMOR -> "被攻击时反击 1 点伤害。";
       case INTIMIDATE -> "敌方攻击该造物时会放弃此次攻击。";
       case SONAR -> "可攻击带有水袭的单位。";
-      case STINKY -> "相邻敌方力量 -1。";
-      case STINKY_FAR -> "对面造物力量 -1。";
+      case STINKY, STINKY_FAR -> "正对面敌方造物力量 -1。";
       case WEB_WEAK -> "受到攻击的造物力量 -1。";
       case SLOW -> "受到伤害的造物力量 -1。";
       case HISS -> "使对面【自爆】印记失效。";
       case ENDER_SHIFT -> "受伤后随机移动到其他空位。";
-      case WANDER -> "攻击或回合结束后向随机空位移。";
+      case WANDER -> "回合结束后向随机空位走去。";
       case RUSH_PUSH -> "移动时推挤相邻造物。";
       case GUST_SHIFT -> "攻击后随机移动到其他空位。";
       case RIDING -> "相邻友方力量 +1。";
@@ -121,7 +126,7 @@ public final class SigilDescriptions {
       case FERMENT -> "在场一回合获得 2 腐肉。";
       case TRADE -> "在场一回合获得 1 骨币。";
       case WATER_STORE -> "每在场一回合生命 +1。";
-      case FISH_BAIT -> "献祭时获得 1 张鱼干。";
+      case FISH_BAIT -> "献祭时获得 1 鱼干。";
       case QUALITY_SACRIFICE -> "献祭时获得 3 腐肉。";
       case DEMON_OFFER -> "献祭时获得 3 骨币。";
       case ETERNAL_LIFE -> "可无限次献祭。";

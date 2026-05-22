@@ -2,12 +2,12 @@ package com.github.mczju.mczjuscription.game.card;
 
 import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
 import com.github.mczju.mczjuscription.game.sigil.SigilId;
+import com.github.mczju.mczjuscription.item.InscriptionItems;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +16,7 @@ import java.util.logging.Level;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 
-/** 内置 + 自定义卡牌模板库。 */
+/** 卡牌模板库（cards.yml）。 */
 public final class CardCatalog {
 
   private static final Map<String, CardTemplate> TEMPLATES = new ConcurrentHashMap<>();
@@ -47,14 +47,11 @@ public final class CardCatalog {
 
   public static void reload() {
     TEMPLATES.clear();
-    for (CardId id : CardId.values()) {
-      CardTemplate t = CardTemplate.fromDefinition(id, CardRegistry.get(id));
-      TEMPLATES.put(id.name(), t);
-    }
-    loadOverrides();
+    loadFromYaml();
+    InscriptionItems.registerAllCards();
   }
 
-  private static void loadOverrides() {
+  private static void loadFromYaml() {
     if (storageFile == null || !storageFile.exists()) return;
     YamlConfiguration yaml = YamlConfiguration.loadConfiguration(storageFile);
     var section = yaml.getConfigurationSection("cards");
@@ -74,6 +71,7 @@ public final class CardCatalog {
     template.setSigils(template.sigils());
     TEMPLATES.put(template.id(), template);
     persist();
+    InscriptionItems.registerCard(template.id());
   }
 
   public static void saveRuntime(CardTemplate template) {
@@ -97,21 +95,13 @@ public final class CardCatalog {
     return TEMPLATES.get(id);
   }
 
-  public static CardTemplate require(CardId id) {
-    return require(id.name());
-  }
-
   public static Collection<CardTemplate> all() {
     return Collections.unmodifiableCollection(TEMPLATES.values());
   }
 
   public static List<CardTemplate> sortedForEditor() {
     List<CardTemplate> list = new ArrayList<>(TEMPLATES.values());
-    list.sort(
-        (a, b) -> {
-          if (a.isBuiltin() != b.isBuiltin()) return a.isBuiltin() ? -1 : 1;
-          return a.displayName().compareTo(b.displayName());
-        });
+    list.sort((a, b) -> a.displayName().compareToIgnoreCase(b.displayName()));
     return list;
   }
 
@@ -119,75 +109,30 @@ public final class CardCatalog {
     return TEMPLATES.containsKey(id);
   }
 
-  /** 是否允许从设计器删除（自定义卡，或已写入 cards.yml 的内置覆盖）。 */
   public static boolean canDelete(String id) {
-    CardTemplate t = TEMPLATES.get(id);
-    if (t == null) {
-      return false;
-    }
-    if (!isEnumBuiltinId(id)) {
-      return true;
-    }
-    return isOverriddenBuiltin(t) || isStoredInYaml(id);
+    return TEMPLATES.containsKey(id);
   }
 
-  /**
-   * 删除卡牌：移除自定义卡；对已覆盖的内置卡恢复为 {@link CardRegistry} 默认值。
-   *
-   * @return 操作结果
-   */
   public static DeleteResult deleteCard(String id) {
-    CardTemplate current = TEMPLATES.get(id);
-    if (current == null) {
+    if (!TEMPLATES.containsKey(id)) {
       return DeleteResult.NOT_FOUND;
     }
-    if (!isEnumBuiltinId(id)) {
-      TEMPLATES.remove(id);
-      persist();
-      return DeleteResult.REMOVED;
-    }
-    if (!isOverriddenBuiltin(current) && !isStoredInYaml(id)) {
-      return DeleteResult.BUILTIN_PROTECTED;
-    }
-    CardId builtin = CardId.valueOf(id);
-    TEMPLATES.put(id, CardTemplate.fromDefinition(builtin, CardRegistry.get(builtin)));
+    TEMPLATES.remove(id);
     persist();
-    return DeleteResult.RESTORED_DEFAULT;
-  }
-
-  private static boolean isEnumBuiltinId(String id) {
-    try {
-      CardId.valueOf(id);
-      return true;
-    } catch (IllegalArgumentException e) {
-      return false;
-    }
-  }
-
-  private static boolean isStoredInYaml(String id) {
-    if (storageFile == null || !storageFile.exists()) {
-      return false;
-    }
-    YamlConfiguration yaml = YamlConfiguration.loadConfiguration(storageFile);
-    return yaml.isConfigurationSection("cards." + id);
+    return DeleteResult.REMOVED;
   }
 
   public enum DeleteResult {
-    /** 自定义卡已从库与 cards.yml 移除 */
     REMOVED,
-    /** 内置卡覆盖已撤销，恢复默认定义 */
-    RESTORED_DEFAULT,
-    /** ID 不存在 */
-    NOT_FOUND,
-    /** 核心内置卡且无自定义覆盖，不可删 */
-    BUILTIN_PROTECTED
+    NOT_FOUND
   }
 
   private static void persist() {
     if (storageFile == null) return;
     YamlConfiguration out = new YamlConfiguration();
-    for (CardTemplate t : TEMPLATES.values()) {
-      if (t.isBuiltin() && !isOverriddenBuiltin(t)) continue;
+    List<CardTemplate> sorted = new ArrayList<>(TEMPLATES.values());
+    sorted.sort((a, b) -> a.id().compareTo(b.id()));
+    for (CardTemplate t : sorted) {
       serialize(out.createSection("cards." + t.id()), t);
     }
     try {
@@ -196,19 +141,6 @@ public final class CardCatalog {
       MCZJUScriptionPlugin.getInstance()
           .getLogger()
           .log(Level.SEVERE, "无法保存 cards.yml", e);
-    }
-  }
-
-  private static boolean isOverriddenBuiltin(CardTemplate t) {
-    try {
-      CardDefinition orig = CardRegistry.get(CardId.valueOf(t.id()));
-      CardTemplate base = CardTemplate.fromDefinition(CardId.valueOf(t.id()), orig);
-      return !base.displayName().equals(t.displayName())
-          || base.power() != t.power()
-          || base.health() != t.health()
-          || !base.sigils().equals(t.sigils());
-    } catch (Exception e) {
-      return true;
     }
   }
 
@@ -226,7 +158,7 @@ public final class CardCatalog {
     sec.set(
         "sigils",
         t.sigils().stream().map(Enum::name).toList());
-    sec.set("builtin", t.isBuiltin());
+    sec.set("builtin", false);
     if (t.evolvesTo() != null && !t.evolvesTo().isBlank()) {
       sec.set("evolvesTo", t.evolvesTo());
     }
@@ -250,7 +182,7 @@ public final class CardCatalog {
       sigils.add(SigilId.valueOf(name));
     }
     t.setSigils(sigils);
-    t.setBuiltin(sec.getBoolean("builtin", false));
+    t.setBuiltin(false);
     t.setEvolvesTo(sec.getString("evolvesTo", null));
     return t;
   }

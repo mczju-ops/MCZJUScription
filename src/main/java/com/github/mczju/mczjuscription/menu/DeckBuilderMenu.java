@@ -7,101 +7,136 @@ import com.github.mczju.mczjuscription.game.deck.DefaultDeckLists;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
 import com.github.mczjuops.mczjugamecore.menu.Menu;
 import com.github.mczjuops.mczjugamecore.utils.ItemBuilder;
+import java.util.ArrayList;
+import java.util.List;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Range;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /** 自由构建模式：编辑 {@link InscriptionPlayerData#savedDeck} */
 public class DeckBuilderMenu extends Menu {
 
-    private final List<String> editing;
+  private static final int DECK_INFO_SLOT = 45;
+  private static final int DESIGNER_SLOT = 47;
+  private static final int SAVE_SLOT = 49;
+  private static final int CLEAR_SLOT = 50;
 
-    /** GameCore {@link com.github.mczjuops.mczjugamecore.menu.MenuFacade} 要求此签名（Object[]，非可变参数）。 */
-    public DeckBuilderMenu(Player player, Object[] args) {
-        super(player, args);
-        InscriptionPlayerData data = new com.github.mczjuops.mczjugamecore.player.PlayerExt(player)
-                .getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
-        List<String> loaded = DefaultDeckLists.parseDeck(data.savedDeck);
-        this.editing = new ArrayList<>(loaded.isEmpty() ? DefaultDeckLists.starterFreeBuildDeck() : loaded);
+  private final List<String> editing;
+  private final int page;
+
+  /** GameCore {@link com.github.mczjuops.mczjugamecore.menu.MenuFacade} 要求此签名（Object[]，非可变参数）。 */
+  public DeckBuilderMenu(Player player, Object[] args) {
+    this(player, null, 0);
+  }
+
+  DeckBuilderMenu(Player player, List<String> editing, int page) {
+    super(player);
+    this.page = Math.max(0, page);
+    if (editing != null) {
+      this.editing = editing;
+    } else {
+      InscriptionPlayerData data =
+          new com.github.mczjuops.mczjugamecore.player.PlayerExt(player)
+              .getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+      List<String> loaded = DefaultDeckLists.parseDeck(data.savedDeck);
+      this.editing =
+          new ArrayList<>(loaded.isEmpty() ? DefaultDeckLists.starterFreeBuildDeck() : loaded);
     }
+  }
 
-    @Override
-    protected void setup() {
-        inventory.clear();
+  @Override
+  protected void setup() {
+    inventory.clear();
 
-        setSlot(4, ItemBuilder.of(Material.WRITABLE_BOOK)
-                .customName("<aqua>当前牌组 <gray>(" + editing.size() + " 张)")
-                .lore(buildDeckLore())
-                .build());
+    List<String> pool = CardCatalog.deckBuilderPool();
+    int currentPage = MenuPagination.clampPage(page, pool.size());
+    int start = MenuPagination.rangeStart(currentPage);
+    int end = MenuPagination.rangeEnd(currentPage, pool.size());
 
-        List<String> pool = CardCatalog.deckBuilderPool();
-        for (int i = 0; i < pool.size(); i++) {
-            String id = pool.get(i);
-            int slot = 9 + i;
-            if (slot >= getRows() * 9) break;
-            setSlot(slot, ItemBuilder.of(CardCatalog.require(id).spawnEggMaterial())
-                    .customName("<green>+ " + CardCatalog.require(id).displayName())
-                    .lore(List.of("<gray>点击加入牌组"))
-                    .build(), (p, e) -> {
-                editing.add(id);
-                refresh();
-            });
-        }
-
-        setSlot(
-            8,
-            ItemBuilder.of(Material.ANVIL)
-                .customName("<light_purple>卡牌设计器")
-                .lore(List.of("<gray>制作 / 编辑卡牌模板"))
-                .build(),
-            (p, e) -> new CardDesignerMenu(p.player(), new Object[0]).open());
-
-        setSlot(getRows() * 9 - 5, ItemBuilder.of(Material.EMERALD)
-                .customName("<green>保存牌组")
-                .lore(List.of("<gray>写入玩家数据，构牌模式生效"))
-                .glint(true)
-                .build(), (p, e) -> save());
-
-        setSlot(getRows() * 9 - 1, ItemBuilder.of(Material.BARRIER)
-                .customName("<red>清空牌组")
-                .build(), (p, e) -> new AlertMenu(p.player(), () -> {
-            editing.clear();
+    int contentSlot = 0;
+    for (int i = start; i < end; i++) {
+      String id = pool.get(i);
+      setSlot(
+          contentSlot++,
+          ItemBuilder.of(CardCatalog.require(id).spawnEggMaterial())
+              .customName("<green>+ " + CardCatalog.require(id).displayName())
+              .lore(List.of("<gray>点击加入牌组"))
+              .build(),
+          (p, e) -> {
+            editing.add(id);
             refresh();
-        }).open());
+          });
     }
 
-    private void save() {
-        InscriptionPlayerData data = player.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
-        data.savedDeck = new java.util.ArrayList<>(editing);
-        data.setModified(true);
-        player.sender().success("<green>牌组已保存（共 %d 张）".formatted(editing.size()));
-        player.player().closeInventory();
-    }
+    setSlot(
+        DECK_INFO_SLOT,
+        ItemBuilder.of(Material.WRITABLE_BOOK)
+            .customName("<aqua>当前牌组 <gray>(" + editing.size() + " 张)")
+            .lore(List.of("<yellow>左键打开查看", "<gray>相同卡牌会堆叠显示", "<gray>查看页按 Q 移除一张"))
+            .build(),
+        (p, e) -> {
+          if (e.isLeftClick()) {
+            new DeckViewMenu(p.player(), editing, currentPage).open();
+          }
+        });
 
-    private List<String> buildDeckLore() {
-        List<String> lore = new ArrayList<>();
-        for (String id : editing) {
-            lore.add("<gray>• " + CardCatalog.require(id).displayName());
-        }
-        if (lore.isEmpty()) lore.add("<dark_gray>（空）");
-        return lore;
-    }
+    setSlot(
+        DESIGNER_SLOT,
+        ItemBuilder.of(Material.ANVIL)
+            .customName("<light_purple>卡牌设计器")
+            .lore(List.of("<gray>制作 / 编辑卡牌模板"))
+            .build(),
+        (p, e) -> new CardDesignerMenu(p.player(), new Object[0]).open());
 
-    @Override
-    protected String getTitle() {
-        return "编辑牌组";
-    }
+    setSlot(
+        SAVE_SLOT,
+        ItemBuilder.of(Material.EMERALD)
+            .customName("<green>保存牌组")
+            .lore(List.of("<gray>写入玩家数据，构牌模式生效"))
+            .glint(true)
+            .build(),
+        (p, e) -> save());
 
-    @Override
-    protected @Range(from = 1, to = 6) int getRows() {
-        return 3;
-    }
+    setSlot(
+        CLEAR_SLOT,
+        ItemBuilder.of(Material.BARRIER)
+            .customName("<red>清空牌组")
+            .build(),
+        (p, e) ->
+            new AlertMenu(
+                    p.player(),
+                    () -> new DeckBuilderMenu(p.player(), new ArrayList<>(editing), currentPage)
+                        .open())
+                .open());
 
-    @Override
-    protected String getPermission() {
-        return "inscription.deck";
-    }
+    MenuPagination.placeCornerArrows(
+        this::setSlot,
+        currentPage,
+        pool.size(),
+        nextPage ->
+            new DeckBuilderMenu(player.player(), new ArrayList<>(editing), nextPage).open());
+  }
+
+  private void save() {
+    InscriptionPlayerData data = player.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+    data.savedDeck = new ArrayList<>(editing);
+    data.setModified(true);
+    player.sender().success("<green>牌组已保存（共 %d 张）".formatted(editing.size()));
+    player.player().closeInventory();
+  }
+
+  @Override
+  protected String getTitle() {
+    return "编辑牌组" + MenuPagination.titleSuffix(page, CardCatalog.deckBuilderPool().size());
+  }
+
+  @Override
+  protected @Range(from = 1, to = 6) int getRows() {
+    return 6;
+  }
+
+  @Override
+  protected String getPermission() {
+    return "inscription.deck";
+  }
 }

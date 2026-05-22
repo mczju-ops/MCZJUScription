@@ -21,28 +21,45 @@ public final class CardDesignerSigilMenu extends Menu {
   private final CardDesignerMenu parent;
   private final CardDesignerSession session;
   private final Set<SigilId> pending;
+  private final int page;
 
-  CardDesignerSigilMenu(Player player, CardDesignerMenu parent, CardDesignerSession session) {
+  CardDesignerSigilMenu(Player player, CardDesignerMenu parent, CardDesignerSession session, int page) {
+    this(player, parent, session, page, null);
+  }
+
+  CardDesignerSigilMenu(
+      Player player,
+      CardDesignerMenu parent,
+      CardDesignerSession session,
+      int page,
+      Set<SigilId> initialPending) {
     super(player);
     this.parent = parent;
     this.session = session;
+    this.page = Math.max(0, page);
     this.pending = EnumSet.noneOf(SigilId.class);
-    this.pending.addAll(session.sigils());
+    if (initialPending != null) {
+      this.pending.addAll(initialPending);
+    } else {
+      this.pending.addAll(session.sigils());
+    }
   }
 
   @Override
   protected void setup() {
     inventory.clear();
     List<SigilId> sigils = SigilDescriptions.implementedForDesigner();
+    int currentPage = MenuPagination.clampPage(page, sigils.size());
+    int start = MenuPagination.rangeStart(currentPage);
+    int end = MenuPagination.rangeEnd(currentPage, sigils.size());
+
     int slot = 0;
-    int maxSlot = getRows() * 9 - 9;
-    for (SigilId sigil : sigils) {
-      if (slot >= maxSlot) break;
+    for (int i = start; i < end; i++) {
+      SigilId sigil = sigils.get(i);
       boolean on = pending.contains(sigil);
       boolean implemented = SigilDescriptions.isImplemented(sigil);
       List<String> lore = new ArrayList<>(SigilDescriptions.loreLines(sigil));
       if (!implemented) {
-        lore = new ArrayList<>(lore);
         lore.add("<red>战斗逻辑尚未接入");
       }
       setSlot(
@@ -61,12 +78,15 @@ public final class CardDesignerSigilMenu extends Menu {
     }
 
     setSlot(
-        getRows() * 9 - 6,
-        ItemBuilder.of(Material.ARROW).customName("<gray>返回").lore(List.of("<gray>不保存更改")).build(),
+        49,
+        ItemBuilder.of(Material.ARROW)
+            .customName("<gray>返回")
+            .lore(List.of("<gray>不保存更改"))
+            .build(),
         (p, e) -> parent.open());
 
     setSlot(
-        getRows() * 9 - 4,
+        51,
         ItemBuilder.of(Material.LIME_CONCRETE)
             .customName("<green>保存印记")
             .lore(
@@ -79,6 +99,13 @@ public final class CardDesignerSigilMenu extends Menu {
           parent.reloadEditor();
           parent.open();
         });
+
+    MenuPagination.placeCornerArrows(
+        this::setSlot,
+        currentPage,
+        sigils.size(),
+        nextPage ->
+            new CardDesignerSigilMenu(player.player(), parent, session, nextPage, pending).open());
   }
 
   private void toggle(SigilId sigil) {
@@ -95,7 +122,8 @@ public final class CardDesignerSigilMenu extends Menu {
 
   @Override
   protected String getTitle() {
-    return "选择印记";
+    return "选择印记"
+        + MenuPagination.titleSuffix(page, SigilDescriptions.implementedForDesigner().size());
   }
 
   @Override

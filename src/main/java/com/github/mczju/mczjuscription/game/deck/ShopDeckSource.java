@@ -6,7 +6,7 @@ import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.ParticipantState;
 import com.github.mczju.mczjuscription.shop.ShopPresenter;
 
-/** 商店模式：开局空牌组，抽牌阶段可反复打开商店购卡。 */
+/** 商店模式：开局空牌组，整备阶段可反复打开商店购卡。 */
 public final class ShopDeckSource implements DeckSource {
 
     private final ShopPresenter shopPresenter;
@@ -32,6 +32,6 @@ public final class ShopDeckSource implements DeckSource {
 
     @Override
     public String mainDrawItemHint() {
-        return "<gray>右键打开商店（可多次购买）";
+        return "<gray>右键村民打开商店（可多次购买）";
     }
 }

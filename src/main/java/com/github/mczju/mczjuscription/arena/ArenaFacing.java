@@ -47,4 +47,29 @@ public final class ArenaFacing {
         Location at = entity.getLocation();
         entity.teleport(withYawToward(at, toward));
     }
+
+    /** 仅调整朝向，不改变实体位置（适用于 AI 关闭的展示用村民等）。 */
+    public static void faceToward(LivingEntity entity, Location toward) {
+        if (entity == null || toward == null || !entity.isValid()) {
+            return;
+        }
+        Location from = entity.getEyeLocation();
+        if (from.getWorld() == null
+                || toward.getWorld() == null
+                || !from.getWorld().equals(toward.getWorld())) {
+            return;
+        }
+        double dx = toward.getX() - from.getX();
+        double dy = toward.getY() - from.getY();
+        double dz = toward.getZ() - from.getZ();
+        double horizontal = Math.sqrt(dx * dx + dz * dz);
+        if (horizontal < 1e-8 && Math.abs(dy) < 1e-8) {
+            return;
+        }
+        float yaw = horizontal < 1e-8
+                ? entity.getLocation().getYaw()
+                : (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) Math.toDegrees(Math.atan2(-dy, horizontal));
+        entity.setRotation(yaw, pitch);
+    }
 }
