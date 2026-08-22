@@ -25,8 +25,7 @@ public final class DeckSourceFactory {
 
     private static List<String> resolveFreeBuildDeck(MatchParticipant participant) {
         if (participant.player() != null) {
-            InscriptionPlayerData data = participant.player().getData(
-                    AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+            InscriptionPlayerData data = participant.player().getData(InscriptionPlayerData.class);
             List<String> saved = DefaultDeckLists.parseDeck(data.savedDeck);
             if (!saved.isEmpty()) return saved;
         }

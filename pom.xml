@@ -6,7 +6,7 @@
 
   <groupId>com.github.mczju</groupId>
   <artifactId>MCZJUScription</artifactId>
-  <version>1.21.7-260523</version>
+  <version>26.2-260823</version>
   <packaging>jar</packaging>
 
   <name>MCZJUScription</name>
@@ -15,8 +15,8 @@
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- 与 https://github.com/mczju-ops/MCZJUGameCore 的 release / tag 对齐 -->
-    <!-- 需含 LeaderboardManager：MCZJUGameCore ≥ 1.0.2，本地可 mvn install -->
-    <mczju.gamecore.version>1.0.2</mczju.gamecore.version>
+    <!-- 26.2 架构：MCZJUGameCore ≥ 1.0.8（其 paper-api 26.2.build.62-beta） -->
+    <mczju.gamecore.version>1.0.8</mczju.gamecore.version>
   </properties>
 
   <build>
@@ -68,7 +68,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.21.7-R0.1-SNAPSHOT</version>
+      <version>26.2.build.112-stable</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

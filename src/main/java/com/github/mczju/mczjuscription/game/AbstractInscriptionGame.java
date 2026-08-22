@@ -139,7 +139,7 @@ public abstract class AbstractInscriptionGame extends AbstractGame {
 
     protected void recordPlayerStats(MatchSide winner) {
         for (PlayerExt playerExt : getPlayers()) {
-            InscriptionPlayerData data = playerExt.getData(DATA_ID, InscriptionPlayerData.class);
+            InscriptionPlayerData data = playerExt.getData(InscriptionPlayerData.class);
             MatchSide side = match.sideFor(playerExt.player());
             if (side != null && side == winner) {
                 data.wins += 1;

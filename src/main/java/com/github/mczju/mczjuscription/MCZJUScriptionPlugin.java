@@ -14,6 +14,7 @@ import com.github.mczju.mczjuscription.listener.DeckBuilderMenuListener;
 import com.github.mczju.mczjuscription.listener.ArenaSlotInteractListener;
 import com.github.mczju.mczjuscription.listener.CardDropPlacementListener;
 import com.github.mczju.mczjuscription.listener.ShopAdminListener;
+import com.github.mczju.mczjuscription.listener.SigilManualMenuListener;
 import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
 import com.github.mczju.mczjuscription.listener.LeaveConfirmListener;
 import com.github.mczju.mczjuscription.lobby.HubZoneListener;
@@ -55,6 +56,7 @@ public final class MCZJUScriptionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new DeckBuilderMenuListener(), this);
         getServer().getPluginManager().registerEvents(new CardDesignerMenuListener(), this);
         getServer().getPluginManager().registerEvents(new ShopAdminListener(), this);
+        getServer().getPluginManager().registerEvents(new SigilManualMenuListener(), this);
 
         PluginCommand isc = getCommand("isc");
         if (isc != null) {

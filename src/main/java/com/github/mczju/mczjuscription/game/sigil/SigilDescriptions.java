@@ -57,7 +57,8 @@ public final class SigilDescriptions {
           SigilId.SNIFF_STEAL,
           SigilId.COPY_ON_DEATH,
           SigilId.HISS,
-          SigilId.SCORCH);
+          SigilId.SCORCH,
+          SigilId.ABUNDANCE);
 
   /** 流浪商人随机印制池（排除亡语/秒杀类，避免印制破坏对局）。 */
   private static final Set<SigilId> TRADER_POOL = EnumSet.allOf(SigilId.class);
@@ -80,6 +81,19 @@ public final class SigilDescriptions {
             java.util.Comparator.comparing(SigilNames::display)
                 .thenComparing(Enum::name))
         .toList();
+  }
+
+  /** 按中文名称或效果说明筛选（{@code query} 为空则返回全部）。 */
+  public static List<SigilId> filteredSorted(String query) {
+    if (query == null || query.isBlank()) {
+      return allSortedByDisplayName();
+    }
+    String needle = query.trim();
+    return allSortedByDisplayName().stream().filter(id -> matchesQuery(id, needle)).toList();
+  }
+
+  private static boolean matchesQuery(SigilId id, String query) {
+    return SigilNames.display(id).contains(query) || description(id).contains(query);
   }
 
   public static List<SigilId> traderImprintPool() {
@@ -111,7 +125,7 @@ public final class SigilDescriptions {
       case SLOW -> "受到伤害的造物力量 -1。";
       case HISS -> "使对面【自爆】印记失效。";
       case ENDER_SHIFT -> "受伤后随机移动到其他空位。";
-      case WANDER -> "回合结束后向随机空位走去。";
+      case WANDER -> "回合结束后向相邻随机空位走去。";
       case RUSH_PUSH -> "移动时推挤相邻造物。";
       case GUST_SHIFT -> "攻击后随机移动到其他空位。";
       case RIDING -> "相邻友方力量 +1。";
@@ -127,8 +141,8 @@ public final class SigilDescriptions {
       case TRADE -> "在场一回合获得 1 骨币。";
       case WATER_STORE -> "每在场一回合生命 +1。";
       case FISH_BAIT -> "献祭时获得 1 鱼干。";
-      case QUALITY_SACRIFICE -> "献祭时获得 3 腐肉。";
-      case DEMON_OFFER -> "献祭时获得 3 骨币。";
+      case QUALITY_SACRIFICE -> "献祭时在基础 1 腐肉之外再获得 2 腐肉。";
+      case DEMON_OFFER -> "献祭时在基础 1 骨币之外再获得 3 骨币。";
       case ETERNAL_LIFE -> "可无限次献祭。";
       case FLEDGLING -> "上场一回合后进化为指定生物。";
       case AFFLICTION -> "上场一回合后变为指定亡灵/下界形态。";
@@ -137,6 +151,7 @@ public final class SigilDescriptions {
       case SURPRISE_ENTRY -> "获得该卡时若场上有空位则免费召唤。";
       case SNIFF_STEAL -> "上场一回合后，从对面随机造物偷一个印记替换嗅探。";
       case GUARD_DOG -> "空位将遭攻击时移动到该格承担伤害。";
+      case ABUNDANCE -> "受到伤害时获得 1 骨币与 1 腐肉。";
     };
   }
 

@@ -21,6 +21,7 @@ public final class CreatureAnimator {
 
     public static final int MOVE_TICKS = 10;
     public static final int PAUSE_TICKS = 8;
+    public static final int PUSH_TICKS = 9;
     public static final int BREEZE_CHARGE_TICKS = 5;
     public static final int BREEZE_JUMP_TICKS = 10;
 
@@ -31,12 +32,13 @@ public final class CreatureAnimator {
     }
 
     /**
-     * 冲向目标 → 回调（结算）→ 退回原位。
+     * 冲向目标 → 回调（结算）→ 退回原位；退回后恢复 {@code faceToward} 朝向（通常为朝对手）。
      */
     public static void playAttackSequence(
             BoardCreature attacker,
             Location home,
             Location target,
+            Location faceToward,
             Runnable onStrike,
             Runnable onComplete
     ) {
@@ -46,16 +48,27 @@ public final class CreatureAnimator {
             return;
         }
         Location lungeTarget = lungePoint(home, target);
+        Float settleFaceYaw =
+                faceToward != null ? ArenaFacing.yawFacing(home, faceToward) : null;
+        Location homeStand = home.clone();
+        if (settleFaceYaw != null) {
+            homeStand.setYaw(settleFaceYaw);
+            LivingEntity mob = living(attacker);
+            if (mob != null) {
+                homeStand.setPitch(CreatureBoardOrientation.boardPitch(mob));
+            }
+        }
         animateMove(attacker, lungeTarget, MOVE_TICKS, () -> {
             playSwing(attacker);
             if (onStrike != null) onStrike.run();
-            animateMove(attacker, home, MOVE_TICKS, () -> {
+            animateMove(attacker, homeStand, MOVE_TICKS, settleFaceYaw, () -> {
+                snapToStand(attacker, homeStand);
                 if (onComplete != null) onComplete.run();
             });
         });
     }
 
-    /** 沿槽位路径平移（预览区前进等）。 */
+    /** 沿槽位路径平移；移动中朝向行进方向，落位后 {@code faceToward} 朝对手。 */
     public static void playMoveSequence(
             BoardCreature creature,
             Location from,
@@ -67,12 +80,108 @@ public final class CreatureAnimator {
             if (onComplete != null) onComplete.run();
             return;
         }
-        BoardVfx.playMove(from, to);
-        Location stand = slotStand(creature, to);
-        Float faceYaw = faceToward != null && stand != null
-                ? ArenaFacing.yawFacing(stand, faceToward)
+        BoardVfx.playMove(from, to, MOVE_TICKS + 4);
+        Location start = slotStand(creature, from);
+        Location end = slotStand(creature, to);
+        Float settleFaceYaw = faceToward != null && end != null
+                ? ArenaFacing.yawFacing(end, faceToward)
                 : null;
-        animateMove(creature, stand, MOVE_TICKS + 4, faceYaw, onComplete);
+        if (settleFaceYaw != null && end != null) {
+            end.setYaw(settleFaceYaw);
+            LivingEntity mob = living(creature);
+            if (mob != null) {
+                end.setPitch(CreatureBoardOrientation.boardPitch(mob));
+            }
+        }
+        Location endStand = end;
+        animateMoveFromTo(creature, start, end, MOVE_TICKS + 4, settleFaceYaw, () -> {
+            snapToStand(creature, endStand);
+            if (onComplete != null) onComplete.run();
+        });
+    }
+
+    /** 【蛮力】推挤：加速滑出 + 落地冲击，再回调推挤者移动。 */
+    public static void playPushSlide(
+            BoardCreature pushed,
+            Location from,
+            Location to,
+            Runnable onComplete) {
+        if (from == null || to == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+        World world = from.getWorld();
+        if (world != null) {
+            world.playSound(from, Sound.ENTITY_RAVAGER_ATTACK, 0.45f, 1.5f);
+        }
+        BoardVfx.playPushTrail(from, to, PUSH_TICKS + 2);
+        Location start = slotStand(pushed, from);
+        Location end = slotStand(pushed, to);
+        animateMoveFromTo(
+                pushed,
+                start,
+                end,
+                PUSH_TICKS,
+                null,
+                () -> {
+                    BoardVfx.playPushImpact(to);
+                    if (onComplete != null) onComplete.run();
+                });
+    }
+
+    /** 将造物实体与标签对齐到 {@code stand} 的位置与朝向。 */
+    public static void snapToStand(BoardCreature creature, Location stand) {
+        if (stand == null) return;
+        LivingEntity mob = living(creature);
+        if (mob != null) {
+            float boardPitch = CreatureBoardOrientation.boardPitch(mob);
+            Location goal = stand.clone();
+            goal.setPitch(boardPitch);
+            mob.teleport(goal);
+            Entity label = display(creature);
+            if (label != null && label.isValid()) {
+                label.teleport(goal.clone().add(0, mob.getHeight() + 0.35, 0));
+            }
+            return;
+        }
+        Entity body = body(creature);
+        if (body == null || !body.isValid()) return;
+        Location goal = stand.clone();
+        body.teleport(goal);
+        Entity label = display(creature);
+        if (label != null && label.isValid()) {
+            double labelOffset = body instanceof BlockDisplay ? 0.55 : 0.35;
+            label.teleport(goal.clone().add(0, labelOffset, 0));
+        }
+    }
+
+    public static void animateMoveFromTo(
+            BoardCreature creature,
+            Location start,
+            Location end,
+            int ticks,
+            Float settleFaceYaw,
+            Runnable onComplete) {
+        if (end == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+        if (start != null) {
+            Location stand = start.clone();
+            applyTravelFacing(stand, start, end, creature);
+            snapToStand(creature, stand);
+        }
+        LivingEntity mob = living(creature);
+        if (mob != null) {
+            animateLivingMove(creature, mob, start, end, ticks, settleFaceYaw, onComplete);
+            return;
+        }
+        Entity body = body(creature);
+        if (body != null) {
+            animateDisplayMove(creature, body, start, end, ticks, settleFaceYaw, onComplete);
+            return;
+        }
+        if (onComplete != null) onComplete.run();
     }
 
     /**
@@ -122,19 +231,19 @@ public final class CreatureAnimator {
         animateMove(creature, end, ticks, null, onComplete);
     }
 
-    public static void animateMove(BoardCreature creature, Location end, int ticks, Float faceYaw, Runnable onComplete) {
+    public static void animateMove(BoardCreature creature, Location end, int ticks, Float settleFaceYaw, Runnable onComplete) {
         if (end == null) {
             if (onComplete != null) onComplete.run();
             return;
         }
         LivingEntity mob = living(creature);
         if (mob != null) {
-            animateLivingMove(creature, mob, end, ticks, faceYaw, onComplete);
+            animateLivingMove(creature, mob, null, end, ticks, settleFaceYaw, onComplete);
             return;
         }
         Entity body = body(creature);
         if (body != null) {
-            animateDisplayMove(creature, body, end, ticks, onComplete);
+            animateDisplayMove(creature, body, null, end, ticks, settleFaceYaw, onComplete);
             return;
         }
         if (onComplete != null) onComplete.run();
@@ -143,21 +252,18 @@ public final class CreatureAnimator {
     private static void animateLivingMove(
             BoardCreature creature,
             LivingEntity mob,
+            Location start,
             Location end,
             int ticks,
-            Float faceYaw,
+            Float settleFaceYaw,
             Runnable onComplete) {
         Entity label = display(creature);
-        Location start = mob.getLocation().clone();
-        Location goal = end.clone();
+        Location goalPos = end.clone();
         float boardPitch = CreatureBoardOrientation.boardPitch(mob);
-        if (faceYaw != null) {
-            goal.setYaw(faceYaw);
-            goal.setPitch(boardPitch);
-        } else {
-            goal.setYaw(start.getYaw());
-            goal.setPitch(boardPitch);
-        }
+        Location from = start != null ? start.clone() : mob.getLocation().clone();
+        Float travelYaw = movementYaw(from, goalPos);
+        float moveYaw = travelYaw != null ? travelYaw : from.getYaw();
+        float finalYaw = settleFaceYaw != null ? settleFaceYaw : moveYaw;
 
         double labelOffset = mob.getHeight() + 0.35;
 
@@ -172,6 +278,9 @@ public final class CreatureAnimator {
                     return;
                 }
                 if (step >= ticks) {
+                    Location goal = goalPos.clone();
+                    goal.setYaw(finalYaw);
+                    goal.setPitch(boardPitch);
                     mob.teleport(goal);
                     if (label != null && label.isValid()) {
                         label.teleport(goal.clone().add(0, labelOffset, 0));
@@ -181,13 +290,12 @@ public final class CreatureAnimator {
                     return;
                 }
                 double t = (step + 1.0) / ticks;
-                Location at = lerp(start, goal, t);
+                Location at = lerpPosition(from, goalPos, t);
+                at.setYaw(moveYaw);
+                at.setPitch(boardPitch);
                 mob.teleport(at);
                 if (label != null && label.isValid()) {
                     label.teleport(at.clone().add(0, labelOffset, 0));
-                }
-                if (step % 2 == 0) {
-                    at.getWorld().spawnParticle(Particle.CLOUD, at.clone().add(0, 0.5, 0), 2, 0.05, 0.05, 0.05, 0.01);
                 }
                 step++;
             }
@@ -195,12 +303,30 @@ public final class CreatureAnimator {
     }
 
     private static void animateDisplayMove(
-            BoardCreature creature, Entity body, Location end, int ticks, Runnable onComplete) {
+            BoardCreature creature,
+            Entity body,
+            Location start,
+            Location end,
+            int ticks,
+            Runnable onComplete) {
+        animateDisplayMove(creature, body, start, end, ticks, null, onComplete);
+    }
+
+    private static void animateDisplayMove(
+            BoardCreature creature,
+            Entity body,
+            Location start,
+            Location end,
+            int ticks,
+            Float settleFaceYaw,
+            Runnable onComplete) {
         Entity label = display(creature);
-        Location start = body.getLocation().clone();
-        Location goal = end.clone();
-        goal.setYaw(start.getYaw());
-        goal.setPitch(start.getPitch());
+        Location from = start != null ? start.clone() : body.getLocation().clone();
+        Location goalPos = end.clone();
+        Float travelYaw = movementYaw(from, goalPos);
+        float moveYaw = travelYaw != null ? travelYaw : from.getYaw();
+        float finalYaw = settleFaceYaw != null ? settleFaceYaw : moveYaw;
+        float pitch = from.getPitch();
         double labelOffset = body instanceof BlockDisplay ? 0.55 : 0.35;
 
         new BukkitRunnable() {
@@ -214,6 +340,9 @@ public final class CreatureAnimator {
                     return;
                 }
                 if (step >= ticks) {
+                    Location goal = goalPos.clone();
+                    goal.setYaw(finalYaw);
+                    goal.setPitch(pitch);
                     body.teleport(goal);
                     if (label != null && label.isValid()) {
                         label.teleport(goal.clone().add(0, labelOffset, 0));
@@ -223,7 +352,9 @@ public final class CreatureAnimator {
                     return;
                 }
                 double t = (step + 1.0) / ticks;
-                Location at = lerp(start, goal, t);
+                Location at = lerpPosition(from, goalPos, t);
+                at.setYaw(moveYaw);
+                at.setPitch(pitch);
                 body.teleport(at);
                 if (label != null && label.isValid()) {
                     label.teleport(at.clone().add(0, labelOffset, 0));
@@ -399,6 +530,42 @@ public final class CreatureAnimator {
                 a.getYaw(),
                 a.getPitch()
         );
+    }
+
+    private static Location lerpPosition(Location a, Location b, double t) {
+        return new Location(
+                a.getWorld(),
+                a.getX() + (b.getX() - a.getX()) * t,
+                a.getY() + (b.getY() - a.getY()) * t,
+                a.getZ() + (b.getZ() - a.getZ()) * t,
+                0f,
+                0f);
+    }
+
+    /** 水平位移足够大时，返回沿路径的朝向；否则保持原朝向。 */
+    private static Float movementYaw(Location from, Location to) {
+        if (from == null || to == null || from.getWorld() == null || !from.getWorld().equals(to.getWorld())) {
+            return null;
+        }
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        if (dx * dx + dz * dz < 0.0025) {
+            return null;
+        }
+        return ArenaFacing.yawFacing(from, to);
+    }
+
+    private static void applyTravelFacing(
+            Location stand, Location from, Location to, BoardCreature creature) {
+        Float yaw = movementYaw(from, to);
+        if (yaw == null) {
+            return;
+        }
+        stand.setYaw(yaw);
+        LivingEntity mob = living(creature);
+        if (mob != null) {
+            stand.setPitch(CreatureBoardOrientation.boardPitch(mob));
+        }
     }
 
     private static LivingEntity living(BoardCreature creature) {

@@ -42,9 +42,8 @@ public final class InscriptionRoomSetup {
 
     public static boolean hasLeisureRoom(Set<String> pool, @Nullable String roomId) {
         if (pool.equals(InscriptionRoomPools.HUB_ONLY)) {
-            return InscriptionGameCoreBridge.getLeisureGameRoom(InscriptionGame.GAME_ID, pool, roomId) != null
-                    || MCZJUGameCore.getGameRoomManager().getGameRoom(InscriptionGame.GAME_ID, InscriptionRoomPools.HUB)
-                            != null;
+            String room = roomId != null && !roomId.isBlank() ? roomId.trim() : InscriptionRoomPools.HUB;
+            return MCZJUGameCore.getGameRoomManager().getGameRoom(InscriptionGame.GAME_ID, room) != null;
         }
         PlayVariant variant = variantForPool(pool);
         return variant != null && InscriptionPlayRoomAllocator.hasLeisureRoom(variant, roomId);

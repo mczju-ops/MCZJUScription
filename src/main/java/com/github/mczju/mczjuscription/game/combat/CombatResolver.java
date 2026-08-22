@@ -1,5 +1,6 @@
 package com.github.mczju.mczjuscription.game.combat;
 
+import com.github.mczju.mczjuscription.arena.ArenaFacing;
 import com.github.mczju.mczjuscription.entity.CreatureAnimator;
 import com.github.mczju.mczjuscription.game.board.BattleBoard;
 import com.github.mczju.mczjuscription.game.board.BoardSlot;
@@ -136,6 +137,9 @@ public final class CombatResolver {
       return planAllStrike(attackerSide, attacker);
     }
     if (attacker.hasSigil(SigilId.TRI_STRIKE)) {
+      if (attacker.hasSigil(SigilId.BEAM) && attackerSide != MatchSide.PLAYER) {
+        return planTriBeamStrikes(attackerSide, attacker, laneAtCombatStart);
+      }
       return planLaneStrikes(attackerSide, attacker, laneAtCombatStart, -1, 0, 1);
     }
     if (attacker.hasSigil(SigilId.SPLIT_STRIKE)) {
@@ -164,11 +168,6 @@ public final class CombatResolver {
     return deferredStrike(() -> planSingleStrike(attackerSide, laneAtCombatStart, attacker));
   }
 
-  private SlotStrike deferredBeamStrike(
-      MatchSide attackerSide, BoardCreature attacker, int laneAtCombatStart) {
-    return deferredStrike(() -> planBeamStrike(attackerSide, attacker, laneAtCombatStart));
-  }
-
   private boolean tryBeginPlayerBeamTargeting(
       MatchSide attackerSide,
       int laneAtCombatStart,
@@ -187,8 +186,52 @@ public final class CombatResolver {
                     resolveAttackerAnimated(
                         attackerSide, attackers, attackerIndex + 1, onComplete),
                 CreatureAnimator.PAUSE_TICKS);
+    if (attacker.hasSigil(SigilId.TRI_STRIKE)) {
+      int[] lanes = triDefenderLanes(laneAtCombatStart);
+      if (lanes.length == 0) {
+        CreatureAnimator.schedule(advance, 4L);
+        return true;
+      }
+      BeamTargeting.beginTriBeam(
+          match, this, attackerSide, laneAtCombatStart, attacker, lanes, 0, 0, advance);
+      return true;
+    }
     BeamTargeting.begin(match, this, attackerSide, laneAtCombatStart, attacker, 0, advance);
     return true;
+  }
+
+  /** 【兵分三路】相对攻击者开战列的敌方目标列（左→中→右）。 */
+  static int[] triDefenderLanes(int centerLane) {
+    List<Integer> lanes = new ArrayList<>();
+    for (int delta : new int[] {-1, 0, 1}) {
+      int idx = centerLane + delta;
+      if (idx >= 0 && idx < BoardSlot.SLOT_COUNT) {
+        lanes.add(idx);
+      }
+    }
+    return lanes.stream().mapToInt(Integer::intValue).toArray();
+  }
+
+  private List<SlotStrike> planTriBeamStrikes(
+      MatchSide attackerSide, BoardCreature attacker, int centerLane) {
+    SlotOwner defenderOwner = attackerSide == MatchSide.PLAYER ? SlotOwner.ENEMY : SlotOwner.PLAYER;
+    int damage = CombatModifiers.effectiveAttack(match.board(), attacker, null);
+    if (damage <= 0) return List.of();
+
+    List<SlotStrike> strikes = new ArrayList<>();
+    for (int delta : new int[] {-1, 0, 1}) {
+      int idx = centerLane + delta;
+      if (idx < 0 || idx >= BoardSlot.SLOT_COUNT) {
+        continue;
+      }
+      strikes.addAll(planStrikeAtDefenderLane(attackerSide, attacker, defenderOwner, idx, damage));
+    }
+    return strikes;
+  }
+
+  private SlotStrike deferredBeamStrike(
+      MatchSide attackerSide, BoardCreature attacker, int preferredLane) {
+    return deferredStrike(() -> planBeamStrike(attackerSide, attacker, preferredLane));
   }
 
   /** 敌方 AI 射线：自动选目标（优先同列）。 */
@@ -304,23 +347,63 @@ public final class CombatResolver {
     return strikes;
   }
 
-  /** 对敌方指定列：有造物则对战，空列则直伤。 */
+  /** 对敌方指定列：有造物则对战，空列则直伤；带【追击】时每列连击两次。 */
   private List<SlotStrike> planStrikeAtDefenderLane(
       MatchSide attackerSide,
       BoardCreature attacker,
       SlotOwner defenderOwner,
       int defenderLane,
       int directDamage) {
-    List<SlotStrike> strikes = new ArrayList<>();
-    BoardSlot defenderSlot = match.board().slot(defenderOwner, defenderLane);
-    if (defenderSlot.isEmpty()) {
-      SlotStrike direct = directStrikeLane(attackerSide, attacker, defenderLane, directDamage);
-      if (direct != null) strikes.add(direct);
-      return strikes;
+    SlotStrike first = firstStrikeAtDefenderLane(
+        attackerSide, attacker, defenderOwner, defenderLane, directDamage);
+    if (first == null) {
+      return List.of();
     }
-    SlotStrike melee = creatureStrike(attackerSide, attacker, defenderSlot.creature());
-    if (melee != null) strikes.add(melee);
-    return strikes;
+    if (!attacker.hasSigil(SigilId.DOUBLE_STRIKE)) {
+      return List.of(first);
+    }
+    return List.of(
+        first,
+        deferredStrikeAtDefenderLane(
+            attackerSide, attacker, defenderOwner, defenderLane, directDamage));
+  }
+
+  private SlotStrike firstStrikeAtDefenderLane(
+      MatchSide attackerSide,
+      BoardCreature attacker,
+      SlotOwner defenderOwner,
+      int defenderLane,
+      int directDamage) {
+    BoardSlot defenderSlot = match.board().slot(defenderOwner, defenderLane);
+    BoardCreature defender = defenderSlot.isEmpty() ? null : defenderSlot.creature();
+    return strikeAtDefenderLane(attackerSide, attacker, defenderLane, defender, directDamage);
+  }
+
+  private SlotStrike strikeAtDefenderLane(
+      MatchSide attackerSide,
+      BoardCreature attacker,
+      int defenderLane,
+      BoardCreature defender,
+      int directDamage) {
+    return switch (
+        CombatModifiers.laneStrikeMode(match.board(), attackerSide, attacker, defender)) {
+      case NONE -> null;
+      case DIRECT -> directStrikeLane(attackerSide, attacker, defenderLane, directDamage);
+      case CREATURE -> creatureStrike(attackerSide, attacker, defender);
+    };
+  }
+
+  /** 连击第二击：在第一击结算后再规划该列（对面已死则走空位直伤）。 */
+  private SlotStrike deferredStrikeAtDefenderLane(
+      MatchSide attackerSide,
+      BoardCreature attacker,
+      SlotOwner defenderOwner,
+      int defenderLane,
+      int directDamage) {
+    return deferredStrike(
+        () ->
+            firstStrikeAtDefenderLane(
+                attackerSide, attacker, defenderOwner, defenderLane, directDamage));
   }
 
   private SlotStrike planSingleStrike(
@@ -328,25 +411,8 @@ public final class CombatResolver {
     SlotOwner defenderOwner = attackerSide == MatchSide.PLAYER ? SlotOwner.ENEMY : SlotOwner.PLAYER;
     BoardSlot defenderSlot = match.board().slot(defenderOwner, slotIndex);
     BoardCreature defender = defenderSlot.isEmpty() ? null : defenderSlot.creature();
-    boolean submerged =
-        defender != null
-            && CombatModifiers.isSubmerged(match.board(), defender, attackerSide);
-
-    if (defender != null && CombatModifiers.preventsAttack(defender)) {
-      return null;
-    }
-
-    if (CombatModifiers.mustFightDefender(attacker, defender, submerged)) {
-      int atk = CombatModifiers.effectiveAttack(match.board(), attacker, defender);
-      if (atk <= 0) return null;
-      return creatureStrike(attackerSide, attacker, defender, atk);
-    }
-
-    if (defender == null || submerged || attacker.hasSigil(SigilId.AIR_STRIKE)) {
-      int damage = CombatModifiers.effectiveAttack(match.board(), attacker, null);
-      return directStrikeLane(attackerSide, attacker, slotIndex, damage);
-    }
-    return null;
+    int damage = CombatModifiers.effectiveAttack(match.board(), attacker, null);
+    return strikeAtDefenderLane(attackerSide, attacker, slotIndex, defender, damage);
   }
 
   private SlotStrike creatureStrike(
@@ -447,6 +513,7 @@ public final class CombatResolver {
           attacker,
           home,
           target,
+          faceTargetOf(match, attacker),
           () ->
               playAttackVfx(match, attacker, home, target, defender, atk, instantKill),
           onFinished);
@@ -509,6 +576,7 @@ public final class CombatResolver {
           attacker,
           home,
           target,
+          faceTargetOf(match, attacker),
           () ->
               CreatureAttackVfx.play(
                   attacker,
@@ -535,6 +603,14 @@ public final class CombatResolver {
   private static Location standOf(InscriptionMatch match, BoardCreature creature) {
     Location slot = BoardVfx.locationOf(match, creature);
     return CreatureAnimator.slotStand(creature, slot);
+  }
+
+  private static Location faceTargetOf(InscriptionMatch match, BoardCreature creature) {
+    if (match.arena() == null || creature.slot() == null) {
+      return null;
+    }
+    return ArenaFacing.facingTarget(
+        match.arena(), creature.slot().owner(), creature.slot().index());
   }
 
   private static Location directAttackLaneTarget(

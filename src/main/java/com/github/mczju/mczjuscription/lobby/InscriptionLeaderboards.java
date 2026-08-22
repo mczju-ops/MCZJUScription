@@ -10,7 +10,7 @@ public final class InscriptionLeaderboards {
 
     public static void registerAll() {
         MCZJUGameCore.getLeaderboardManager()
-                .registerLeaderboard(InscriptionClearLeaderboard.ID, new InscriptionClearLeaderboard());
+                .registerLeaderboard(InscriptionClearLeaderboard.ID, InscriptionClearLeaderboard.class);
     }
 
     public static void refreshClearBoard() {

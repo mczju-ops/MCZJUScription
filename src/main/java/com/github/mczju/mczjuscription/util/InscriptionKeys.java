@@ -30,6 +30,8 @@ public final class InscriptionKeys {
     public static NamespacedKey UI_SLOT_SIDE;
     /** 踏板高亮状态：normal / selected / confirmed */
     public static NamespacedKey PEDAL_HIGHLIGHT;
+    /** 献祭等纯展示用掉落物，不可拾取 */
+    public static NamespacedKey COSMETIC_DROP;
 
     private InscriptionKeys() {}
 
@@ -50,5 +52,6 @@ public final class InscriptionKeys {
         RABBIT_CHEST_SIDE = new NamespacedKey(plugin, "rabbit_chest_side");
         UI_SLOT_SIDE = new NamespacedKey(plugin, "ui_slot_side");
         PEDAL_HIGHLIGHT = new NamespacedKey(plugin, "pedal_highlight");
+        COSMETIC_DROP = new NamespacedKey(plugin, "cosmetic_drop");
     }
 }

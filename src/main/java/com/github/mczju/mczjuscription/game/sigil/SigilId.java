@@ -48,4 +48,5 @@ public enum SigilId {
   SURPRISE_ENTRY,
   SNIFF_STEAL,
   GUARD_DOG,
+  ABUNDANCE,
 }

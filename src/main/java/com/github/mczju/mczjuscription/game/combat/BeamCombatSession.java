@@ -13,10 +13,8 @@ public final class BeamCombatSession {
   private final UUID attackerId;
   private final int strikeRound;
   private final Runnable onSlotComplete;
-
-  private UUID pendingTargetId;
-  /** 射线选中的敌方列（含空槽直伤）。 */
-  private Integer pendingLaneIndex;
+  private final int[] triDefenderLanes;
+  private final int triPhaseIndex;
 
   BeamCombatSession(
       CombatResolver resolver,
@@ -25,12 +23,26 @@ public final class BeamCombatSession {
       BoardCreature attacker,
       int strikeRound,
       Runnable onSlotComplete) {
+    this(resolver, attackerSide, slotIndex, attacker, strikeRound, onSlotComplete, null, -1);
+  }
+
+  BeamCombatSession(
+      CombatResolver resolver,
+      MatchSide attackerSide,
+      int slotIndex,
+      BoardCreature attacker,
+      int strikeRound,
+      Runnable onSlotComplete,
+      int[] triDefenderLanes,
+      int triPhaseIndex) {
     this.resolver = resolver;
     this.attackerSide = attackerSide;
     this.slotIndex = slotIndex;
     this.attackerId = attacker.instanceId();
     this.strikeRound = strikeRound;
     this.onSlotComplete = onSlotComplete;
+    this.triDefenderLanes = triDefenderLanes;
+    this.triPhaseIndex = triPhaseIndex;
   }
 
   public CombatResolver resolver() {
@@ -56,6 +68,22 @@ public final class BeamCombatSession {
   public Runnable onSlotComplete() {
     return onSlotComplete;
   }
+
+  public boolean isTriBeam() {
+    return triDefenderLanes != null && triDefenderLanes.length > 0 && triPhaseIndex >= 0;
+  }
+
+  public int[] triDefenderLanes() {
+    return triDefenderLanes;
+  }
+
+  public int triPhaseIndex() {
+    return triPhaseIndex;
+  }
+
+  private UUID pendingTargetId;
+  /** 射线选中的敌方列（含空槽直伤）。 */
+  private Integer pendingLaneIndex;
 
   public UUID pendingTargetId() {
     return pendingTargetId;

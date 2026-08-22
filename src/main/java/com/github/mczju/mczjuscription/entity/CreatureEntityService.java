@@ -1,9 +1,11 @@
 package com.github.mczju.mczjuscription.entity;
 
 import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
+import com.github.mczju.mczjuscription.arena.ArenaFacing;
 import com.github.mczju.mczjuscription.game.board.BattleBoard;
 import com.github.mczju.mczjuscription.game.board.BoardSlot;
 import com.github.mczju.mczjuscription.game.board.SlotOwner;
+import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.card.CardTemplate;
 import com.github.mczju.mczjuscription.game.combat.CreatureStatModifiers;
@@ -77,6 +79,47 @@ public final class CreatureEntityService {
         refreshLabel(board, slot.creature());
       }
     }
+  }
+
+  /** 将造物实体对齐到当前逻辑槽位（与 spawn 朝向一致）。 */
+  public static void snapToBoardSlot(InscriptionMatch match, BoardCreature creature) {
+    if (match == null || creature == null || match.arena() == null) return;
+    BoardSlot slot = creature.slot();
+    if (slot == null) return;
+    Location center = match.arena().slotLocation(slot.owner(), slot.index());
+    if (center == null) return;
+    snapToBoardSlot(match, creature, slot.owner(), slot.index(), center);
+  }
+
+  /** 对齐到指定槽位中心（推挤动画前先把被推挤者钉在被推格）。 */
+  public static void snapToBoardSlot(
+      InscriptionMatch match,
+      BoardCreature creature,
+      SlotOwner owner,
+      int index,
+      Location slotCenter) {
+    if (match == null || creature == null || slotCenter == null || match.arena() == null) {
+      return;
+    }
+    Location faceTarget = ArenaFacing.facingTarget(match.arena(), owner, index);
+    Location stand =
+        CreatureAnimator.slotStand(
+            creature, ArenaFacing.withYawToward(slotCenter, faceTarget));
+    if (stand == null) return;
+    if (faceTarget != null) {
+      stand.setYaw(ArenaFacing.yawFacing(stand, faceTarget));
+      LivingEntity mob = findLiving(creature);
+      if (mob != null) {
+        stand.setPitch(CreatureBoardOrientation.boardPitch(mob));
+      }
+    }
+    CreatureAnimator.snapToStand(creature, stand);
+  }
+
+  private static LivingEntity findLiving(BoardCreature creature) {
+    if (creature.entityId() == null) return null;
+    Entity entity = findEntity(creature.entityId());
+    return entity instanceof LivingEntity living ? living : null;
   }
 
   /** 战斗选目标等高亮（射线确认前）。 */

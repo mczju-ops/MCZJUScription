@@ -20,6 +20,8 @@ import org.bukkit.entity.EntityType;
 public final class CardCatalog {
 
   private static final Map<String, CardTemplate> TEMPLATES = new ConcurrentHashMap<>();
+  /** 设计器/融合等热加载预览卡，reload 后仍保留直至落盘或删除。 */
+  private static final Map<String, CardTemplate> RUNTIME = new ConcurrentHashMap<>();
   private static File storageFile;
 
   private CardCatalog() {}
@@ -48,7 +50,11 @@ public final class CardCatalog {
   public static void reload() {
     TEMPLATES.clear();
     loadFromYaml();
+    TEMPLATES.putAll(RUNTIME);
     InscriptionItems.registerAllCards();
+    for (String id : RUNTIME.keySet()) {
+      InscriptionItems.registerCard(id);
+    }
   }
 
   private static void loadFromYaml() {
@@ -69,6 +75,7 @@ public final class CardCatalog {
 
   public static void save(CardTemplate template) {
     template.setSigils(template.sigils());
+    RUNTIME.put(template.id(), template);
     TEMPLATES.put(template.id(), template);
     persist();
     InscriptionItems.registerCard(template.id());
@@ -76,7 +83,9 @@ public final class CardCatalog {
 
   public static void saveRuntime(CardTemplate template) {
     template.setBuiltin(false);
+    RUNTIME.put(template.id(), template);
     TEMPLATES.put(template.id(), template);
+    InscriptionItems.registerCard(template.id());
   }
 
   public static String newCustomId() {
@@ -84,7 +93,7 @@ public final class CardCatalog {
   }
 
   public static CardTemplate require(String id) {
-    CardTemplate t = TEMPLATES.get(id);
+    CardTemplate t = resolve(id, null);
     if (t == null) {
       throw new IllegalArgumentException("unknown card template: " + id);
     }
@@ -92,7 +101,33 @@ public final class CardCatalog {
   }
 
   public static CardTemplate get(String id) {
-    return TEMPLATES.get(id);
+    CardTemplate t = TEMPLATES.get(id);
+    return t != null ? t : RUNTIME.get(id);
+  }
+
+  /**
+   * 解析模板：内存库 → 运行时预览库 →（可选）设计器当前会话重建。
+   */
+  public static CardTemplate resolve(String id, java.util.UUID designerPlayerId) {
+    if (id == null || id.isBlank()) {
+      return null;
+    }
+    CardTemplate t = get(id);
+    if (t != null) {
+      if (!TEMPLATES.containsKey(id)) {
+        TEMPLATES.put(id, t);
+      }
+      return t;
+    }
+    if (designerPlayerId != null) {
+      var session = com.github.mczju.mczjuscription.data.CardDesignerSession.of(designerPlayerId);
+      if (id.equals(session.editingId())) {
+        CardTemplate preview = session.toTemplate(false);
+        saveRuntime(preview);
+        return preview;
+      }
+    }
+    return null;
   }
 
   public static Collection<CardTemplate> all() {
@@ -106,18 +141,19 @@ public final class CardCatalog {
   }
 
   public static boolean exists(String id) {
-    return TEMPLATES.containsKey(id);
+    return get(id) != null;
   }
 
   public static boolean canDelete(String id) {
-    return TEMPLATES.containsKey(id);
+    return exists(id);
   }
 
   public static DeleteResult deleteCard(String id) {
-    if (!TEMPLATES.containsKey(id)) {
+    if (!exists(id)) {
       return DeleteResult.NOT_FOUND;
     }
     TEMPLATES.remove(id);
+    RUNTIME.remove(id);
     persist();
     return DeleteResult.REMOVED;
   }

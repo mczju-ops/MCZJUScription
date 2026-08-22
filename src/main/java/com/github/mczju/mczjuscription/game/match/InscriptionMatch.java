@@ -15,6 +15,7 @@ import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardDefinition;
+import com.github.mczju.mczjuscription.game.card.CardTemplate;
 import com.github.mczju.mczjuscription.game.card.CostType;
 import com.github.mczju.mczjuscription.game.session.DeckMode;
 import com.github.mczju.mczjuscription.game.session.MatchMode;
@@ -477,7 +478,13 @@ public final class InscriptionMatch {
             return false;
         }
 
-        var def = CardCatalog.require(templateId);
+        java.util.UUID designerId =
+                state.player().map(p -> p.player().getUniqueId()).orElse(null);
+        CardTemplate def = CardCatalog.resolve(templateId, designerId);
+        if (def == null) {
+            feedback.actionBarWarn("<red>卡牌模板不存在，请在设计器重新获取");
+            return false;
+        }
         if (!payCost(actingSide, def.toDefinition())) return false;
 
         state.hand().remove(templateId);
@@ -544,7 +551,7 @@ public final class InscriptionMatch {
             Location from = arena.slotLocation(SlotOwner.ENEMY_PREVIEW, i);
             Location to = arena.slotLocation(SlotOwner.ENEMY, i);
             if (from != null && to != null) {
-                BoardVfx.playMove(from, to);
+                BoardVfx.playMove(from, to, 8);
             }
 
             BoardCreature creature = preview.creature();
@@ -650,13 +657,8 @@ public final class InscriptionMatch {
 
         SigilRegistry.fire(SigilTrigger.ON_SACRIFICE, new SigilContext(this, SigilTrigger.ON_SACRIFICE, victim, null, 0));
 
-        if (!victim.hasSigil(SigilId.DEMON_OFFER)) {
-            int value = victim.definition().sacrificeValue();
-            if (victim.hasSigil(SigilId.QUALITY_SACRIFICE)) {
-                value = 3;
-            }
-            currency(actingSide).addBlood(value);
-        }
+        applySacrificeReward(actingSide, victim);
+        playSacrificeFx(victim);
 
         if (victim.hasSigil(SigilId.ETERNAL_LIFE)) {
             syncHud();
@@ -665,6 +667,24 @@ public final class InscriptionMatch {
 
         removeCreatureFromBoard(victim);
         syncHud();
+    }
+
+    private void applySacrificeReward(MatchSide actingSide, BoardCreature victim) {
+        currency(actingSide).addBlood(1);
+        currency(actingSide).addBones(1);
+        if (victim.hasSigil(SigilId.QUALITY_SACRIFICE)) {
+            currency(actingSide).addBlood(2);
+        }
+    }
+
+    private void playSacrificeFx(BoardCreature victim) {
+        Location at = BoardVfx.locationOf(this, victim);
+        if (at == null && victim.slot() != null && arena != null) {
+            at = arena.slotLocation(victim.slot().owner(), victim.slot().index());
+        }
+        if (at != null) {
+            BoardVfx.playSacrificeDrops(at);
+        }
     }
 
     /** 对场上造物造成伤害；生命归零时按 killer 方结算死亡（护盾、硬壳等同战斗伤害）。 */

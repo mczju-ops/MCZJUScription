@@ -18,6 +18,7 @@ import com.github.mczju.mczjuscription.ui.MatchHotbar;
 import com.github.mczju.mczjuscription.roguelike.WanderingTraderService;
 import com.github.mczju.mczjuscription.shop.ShopVillagerService;
 import com.github.mczju.mczjuscription.ui.ResourceHotbar;
+import com.github.mczju.mczjuscription.vfx.BoardVfx;
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
 import com.github.mczjuops.mczjugamecore.menu.AlertMenu;
 import com.github.mczjuops.mczjugamecore.item.MGCItem;
@@ -29,6 +30,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -126,6 +128,13 @@ public final class MatchListener implements Listener {
 
     }
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCosmeticDropPickup(EntityPickupItemEvent event) {
+        if (BoardVfx.isCosmeticDrop(event.getItem())) {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
@@ -187,6 +196,10 @@ public final class MatchListener implements Listener {
         if (match == null) return;
 
         ItemStack stack = event.getItemDrop().getItemStack();
+        if (BoardVfx.isCosmeticDrop(event.getItemDrop())) {
+            event.setCancelled(true);
+            return;
+        }
         if (ResourceHotbar.isResourceItem(stack) || MatchHotbar.isInscriptionTool(stack)) {
             event.setCancelled(true);
         }

@@ -79,6 +79,7 @@ public final class PreviewAdvanceSequence {
             preview.clear();
         }
         step.creature.bind(match.board().enemySlot(step.slotIndex));
+        com.github.mczju.mczjuscription.entity.CreatureEntityService.snapToBoardSlot(match, step.creature);
         match.notifyEnemyBackfieldWaveAdvanced();
     }
 

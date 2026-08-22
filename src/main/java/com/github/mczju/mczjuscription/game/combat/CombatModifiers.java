@@ -35,6 +35,36 @@ public final class CombatModifiers {
     return defender.hasSigil(SigilId.HIGH_JUMP);
   }
 
+  /** 单列结算方式：空位 / 潜水 / 空袭 → 直伤；否则近战造物。 */
+  public enum LaneStrikeMode {
+    NONE,
+    DIRECT,
+    CREATURE
+  }
+
+  public static LaneStrikeMode laneStrikeMode(
+      BattleBoard board,
+      MatchSide attackerSide,
+      BoardCreature attacker,
+      BoardCreature defenderOrNull) {
+    if (defenderOrNull != null && preventsAttack(defenderOrNull)) {
+      return LaneStrikeMode.NONE;
+    }
+    boolean submerged =
+        defenderOrNull != null && isSubmerged(board, defenderOrNull, attackerSide);
+    if (mustFightDefender(attacker, defenderOrNull, submerged)) {
+      return effectiveAttack(board, attacker, defenderOrNull) > 0
+          ? LaneStrikeMode.CREATURE
+          : LaneStrikeMode.NONE;
+    }
+    if (defenderOrNull == null || submerged || attacker.hasSigil(SigilId.AIR_STRIKE)) {
+      return effectiveAttack(board, attacker, null) > 0
+          ? LaneStrikeMode.DIRECT
+          : LaneStrikeMode.NONE;
+    }
+    return LaneStrikeMode.NONE;
+  }
+
   public static boolean preventsAttack(BoardCreature defender) {
     return defender.hasSigil(SigilId.INTIMIDATE);
   }

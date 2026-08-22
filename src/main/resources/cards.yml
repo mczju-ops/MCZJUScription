@@ -155,7 +155,7 @@ cards:
     costType: BLOOD
     cost: 1
     sacrificeValue: 1
-    sigils: []
+    sigils: [ABUNDANCE]
     builtin: false
 
   mob_creeper:

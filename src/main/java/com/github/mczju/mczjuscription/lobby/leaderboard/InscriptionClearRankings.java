@@ -27,15 +27,15 @@ public final class InscriptionClearRankings {
 
     public static final int TOP_SIZE = 10;
 
-    private static final double CLEAR_WEIGHT = 1_000_000.0;
+    public static final double CLEAR_WEIGHT = 1_000_000.0;
 
     private InscriptionClearRankings() {}
 
     public static List<LeaderboardEntry> toLeaderboardEntries() {
         List<LeaderboardEntry> entries = new ArrayList<>();
         for (ClearRankRow row : topRows()) {
-            entries.add(
-                    new LeaderboardEntry(row.displayName(), row.sortValue(), row.displayValue()));
+            // MGC 1.0.8 LeaderboardEntry 只携带 (玩家名, 数值)；数值=sortValue，渲染时拆回难度/次数
+            entries.add(new LeaderboardEntry(row.displayName(), row.sortValue()));
         }
         return entries;
     }

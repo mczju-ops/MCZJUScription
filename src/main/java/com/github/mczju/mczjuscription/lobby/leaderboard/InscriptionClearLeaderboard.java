@@ -3,10 +3,8 @@ package com.github.mczju.mczjuscription.lobby.leaderboard;
 import com.github.mczjuops.mczjugamecore.score.leaderboard.AbstractLeaderboard;
 import com.github.mczjuops.mczjugamecore.score.leaderboard.LeaderboardEntry;
 import com.github.mczjuops.mczjugamecore.score.leaderboard.SortOrder;
-import com.github.mczjuops.mczjugamecore.utils.TextParser;
 import java.util.ArrayList;
 import java.util.List;
-import net.kyori.adventure.text.Component;
 
 /** 邪恶冥刻通关榜：难度优先，同难度比通关次数（MGC {@link AbstractLeaderboard}）。 */
 public final class InscriptionClearLeaderboard extends AbstractLeaderboard {
@@ -43,15 +41,11 @@ public final class InscriptionClearLeaderboard extends AbstractLeaderboard {
     }
 
     @Override
-    public boolean autoRefresh() {
-        // 由大厅进入 / 右键榜 / 对局结束时主动 refresh，避免 MGC 定时任务在 /reload 后踩已关闭的插件 ClassLoader
-        return false;
-    }
-
-    @Override
-    public Component renderLine(int rank, String playerName, String displayValue) {
-        return TextParser.parse(
-                "<yellow>%d.</yellow> <white>%s</white> <gray>—</gray> <aqua>%s"
-                        .formatted(rank, playerName, displayValue));
+    public String renderLine(int rank, String playerName, double value) {
+        // 值 = 难度 * CLEAR_WEIGHT + 通关次数（与 InscriptionClearRankings.sortValue 一致），在此拆回展示
+        int difficulty = (int) (value / InscriptionClearRankings.CLEAR_WEIGHT);
+        int clears = (int) (value % InscriptionClearRankings.CLEAR_WEIGHT);
+        return "<yellow>%d.</yellow> <white>%s</white> <gray>—</gray> <aqua>难度 %d · %d 次"
+                .formatted(rank, playerName, difficulty, clears);
     }
 }

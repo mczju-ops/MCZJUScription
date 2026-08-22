@@ -36,8 +36,6 @@ public final class SigilRegistry {
 
     register(SigilId.EVOKE_VEX, ctx -> BoardTokens.spawnOnAdjacentEmpty(ctx.match(), ctx.source(), "mob_vex"));
 
-    register(SigilId.RUSH_PUSH, ctx -> BoardShift.move(ctx.match(), ctx.source(), ctx.source().slot().index() > 0 ? 1 : -1));
-
     register(SigilId.ENDER_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source(), BoardShift.ShiftStyle.ENDER_TELEPORT));
 
     register(SigilId.GUST_SHIFT, ctx -> BoardShift.moveRandomEmpty(ctx.match(), ctx.source(), BoardShift.ShiftStyle.BREEZE_JUMP));
@@ -93,6 +91,16 @@ public final class SigilRegistry {
             ctx.source().modifyPower(-1);
           }
         });
+
+    register(
+        SigilId.ABUNDANCE,
+        ctx -> {
+          if (ctx.damage() > 0) {
+            MatchSide owner = ctx.source().owner();
+            ctx.match().grantBones(owner, 1);
+            ctx.match().currency(owner).addBlood(1);
+          }
+        });
   }
 
   private SigilRegistry() {}
@@ -146,7 +154,7 @@ public final class SigilRegistry {
   public static SigilTrigger triggerOf(SigilId id) {
     return switch (id) {
       case EVOKE_VEX, SURPRISE_ENTRY -> SigilTrigger.ON_PLAY;
-      case SPIKY_ARMOR, INK, WEB_WEAK, SLOW -> SigilTrigger.ON_ATTACKED;
+      case SPIKY_ARMOR, INK, WEB_WEAK, SLOW, ABUNDANCE -> SigilTrigger.ON_ATTACKED;
       case STEAL_BONE -> SigilTrigger.ON_COMBAT_ATTACK;
       case BONE_ROYALTY, COPY_ON_DEATH, SELF_DESTRUCT, SPLIT_SPAWN -> SigilTrigger.ON_DEATH;
       case BREEDING, FERMENT, TRADE, WATER_STORE, FLEDGLING, AFFLICTION, WANDER, SNIFF_STEAL ->
@@ -154,7 +162,6 @@ public final class SigilRegistry {
       case QUALITY_SACRIFICE, DEMON_OFFER, ETERNAL_LIFE, FISH_BAIT -> SigilTrigger.ON_SACRIFICE;
       case ENDER_SHIFT -> SigilTrigger.ON_ATTACKED;
       case GUST_SHIFT -> SigilTrigger.ON_COMBAT_ATTACK;
-      case RUSH_PUSH -> SigilTrigger.ON_TURN_END;
       case STINKY, STINKY_FAR, RIDING, TAUNT_AURA, SCORCH, HISS -> SigilTrigger.AURA;
       case AIR_STRIKE,
           WATER_STRIKE,
@@ -169,7 +176,8 @@ public final class SigilRegistry {
           FIRST_SHIELD,
           INTIMIDATE,
           SONAR,
-          GUARD_DOG ->
+          GUARD_DOG,
+          RUSH_PUSH ->
           SigilTrigger.SPECIAL;
     };
   }

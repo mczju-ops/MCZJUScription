@@ -1,9 +1,12 @@
 package com.github.mczju.mczjuscription.menu;
 
 import com.github.mczju.mczjuscription.data.CardDesignerSession;
+import com.github.mczju.mczjuscription.game.InscriptionGameAccess;
 import com.github.mczju.mczjuscription.game.card.CardCatalog;
 import com.github.mczju.mczjuscription.game.card.CardTemplate;
 import com.github.mczju.mczjuscription.game.card.SigilRules;
+import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
+import com.github.mczju.mczjuscription.game.match.MatchSide;
 import com.github.mczju.mczjuscription.item.InscriptionItems;
 import com.github.mczju.mczjuscription.ui.DialogTextInput;
 import com.github.mczju.mczjuscription.util.SpawnEggEntityTypes;
@@ -242,6 +245,16 @@ public final class CardDesignerMenu extends Menu {
     }
     CardTemplate preview = session.toTemplate(false);
     CardCatalog.saveRuntime(preview);
+    InscriptionMatch match = InscriptionGameAccess.resolveMatch(player);
+    if (match != null) {
+      MatchSide side = match.sideFor(player);
+      if (side != null) {
+        match.grantCardToHand(side, id);
+        player.sendMessage(
+            "§a已获得卡牌 §f%s §a（%s），已加入对局手牌。".formatted(preview.displayName(), id));
+        return;
+      }
+    }
     ItemStack card = InscriptionItems.card(id).getItem();
     var leftover = player.getInventory().addItem(card);
     if (!leftover.isEmpty()) {

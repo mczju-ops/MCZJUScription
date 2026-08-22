@@ -1,7 +1,7 @@
 name: MCZJUScription
 version: '${project.version}'
 main: com.github.mczju.mczjuscription.MCZJUScriptionPlugin
-api-version: '1.21.7'
+api-version: '26.2'
 depend: [MCZJUGameCore]
 commands:
   isc:

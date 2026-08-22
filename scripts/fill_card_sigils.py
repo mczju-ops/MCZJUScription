@@ -21,7 +21,7 @@ CARD_SIGILS = {
     "mob_cave_spider": (["VENOM_KILL"], None),
     "mob_chicken": (["BREEDING"], None),
     "mob_cod": (["FISH_BAIT"], None),
-    "mob_cow": ([], None),
+    "mob_cow": (["ABUNDANCE"], None),
     "mob_creeper": (["SELF_DESTRUCT"], None),
     "mob_dolphin": (["WATER_STRIKE", "FISH_BAIT"], None),
     "mob_donkey": (["RIDING", "WANDER"], None),

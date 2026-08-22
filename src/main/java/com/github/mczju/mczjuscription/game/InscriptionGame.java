@@ -67,7 +67,7 @@ public final class InscriptionGame extends AbstractInscriptionGame implements Mi
                                 "<gray>单人：商店或自由构牌",
                                 "<gray>双人：组队后选模式",
                                 "<yellow>▶ 点击进入大厅"));
-        InscriptionGameCoreBridge.applyDefaultJoinRoomPool(builder, InscriptionRoomPools.HUB_ONLY);
+        // MGC 1.0.8 按房间名固定加入：默认落位 main 大厅（见 InscriptionGameCoreBridge.joinHub）
         return builder.build();
     }
 

@@ -3,6 +3,7 @@ package com.github.mczju.mczjuscription.ui;
 import com.github.mczju.mczjuscription.data.CardDesignerSession;
 import com.github.mczju.mczjuscription.menu.CardDesignerMenu;
 import com.github.mczju.mczjuscription.menu.ShopAdminPoolMenu;
+import com.github.mczju.mczjuscription.menu.SigilManualMenu;
 import com.github.mczju.mczjuscription.shop.ShopConfigStorage;
 import com.github.mczju.mczjuscription.shop.ShopPoolEntry;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
@@ -13,6 +14,7 @@ import org.bukkit.entity.Player;
 public final class DialogTextInput {
 
   private static final int CARD_NAME_MAX_LEN = 32;
+  private static final int SIGIL_SEARCH_MAX_LEN = 32;
 
   private DialogTextInput() {}
 
@@ -76,6 +78,40 @@ public final class DialogTextInput {
             },
             "取消",
             (p, r) -> new CardDesignerMenu(p, new Object[0]).open());
+  }
+
+  public static void openSigilSearch(Player player, int returnPage, String currentQuery) {
+    player.closeInventory();
+    String safe = currentQuery != null ? currentQuery : "";
+    String hint =
+        safe.isEmpty()
+            ? "<yellow>输入印记名称或效果关键词"
+            : "<gray>当前筛选：<white>%s".formatted(safe);
+    DialogBuilder.of("<yellow>搜索印记")
+        .emptyLine()
+        .textInput("value", hint, SIGIL_SEARCH_MAX_LEN, 200, safe)
+        .showConfirm(
+            player,
+            150,
+            "确认",
+            (p, r) -> {
+              String input = r.text("value") != null ? r.text("value").trim() : "";
+              if (input.length() > SIGIL_SEARCH_MAX_LEN) {
+                new PlayerExt(p)
+                    .sender()
+                    .error(
+                        "<red>搜索词不能超过 %d 个字符".formatted(SIGIL_SEARCH_MAX_LEN));
+                openSigilSearch(p, returnPage, currentQuery);
+                return;
+              }
+              if (input.isEmpty()) {
+                new SigilManualMenu(p, returnPage, currentQuery).open();
+                return;
+              }
+              new SigilManualMenu(p, 0, input).open();
+            },
+            "取消",
+            (p, r) -> new SigilManualMenu(p, returnPage, currentQuery).open());
   }
 
   private static void applyShopWeight(Player player, PlayerExt ext, int poolIndex, int weight) {

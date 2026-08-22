@@ -1,20 +1,29 @@
 package com.github.mczju.mczjuscription.vfx;
 
+import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
 import com.github.mczju.mczjuscription.arena.BattleArena;
 import com.github.mczju.mczjuscription.game.board.SlotOwner;
 import com.github.mczju.mczjuscription.game.card.BoardCreature;
 import com.github.mczju.mczjuscription.game.match.InscriptionMatch;
 import com.github.mczju.mczjuscription.game.match.MatchSide;
+import com.github.mczju.mczjuscription.util.InscriptionKeys;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Item;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 /** 棋盘造物攻击、移动、生成等粒子效果。 */
 public final class BoardVfx {
+
+    private static final int SACRIFICE_DROP_LIFETIME_TICKS = 50;
 
     private BoardVfx() {}
 
@@ -37,6 +46,36 @@ public final class BoardVfx {
     }
 
     public static void playMove(Location from, Location to) {
+        playMove(from, to, 12);
+    }
+
+    /** 沿路径逐 tick 播放尾迹，{@code durationTicks} 应与造物平移时长一致。 */
+    public static void playMove(Location from, Location to, int durationTicks) {
+        playTrail(from, to, durationTicks, Particle.CLOUD, 0.35, 0.004);
+    }
+
+    /** 【蛮力】推挤：尘土尾迹 + 落地冲击。 */
+    public static void playPushTrail(Location from, Location to, int durationTicks) {
+        playTrail(from, to, durationTicks, Particle.CRIT, 0.42, 0.012);
+    }
+
+    public static void playPushImpact(Location at) {
+        Location center = center(at);
+        if (center == null) return;
+        World world = center.getWorld();
+        world.playSound(center, Sound.ENTITY_RAVAGER_STEP, 0.55f, 1.35f);
+        world.spawnParticle(Particle.POOF, center.clone().add(0, 0.25, 0), 10, 0.18, 0.12, 0.18, 0.02);
+        world.spawnParticle(Particle.CLOUD, center.clone().add(0, 0.35, 0), 6, 0.12, 0.08, 0.12, 0.01);
+        world.spawnParticle(Particle.SWEEP_ATTACK, center.clone().add(0, 0.45, 0), 1, 0, 0, 0, 0);
+    }
+
+    private static void playTrail(
+            Location from,
+            Location to,
+            int durationTicks,
+            Particle particle,
+            double yOffset,
+            double speed) {
         Location start = center(from);
         Location end = center(to);
         if (start == null || end == null || start.getWorld() == null) return;
@@ -49,20 +88,66 @@ public final class BoardVfx {
             playSpawn(end);
             return;
         }
-        Vector step = delta.multiply(1.0 / Math.max(1, (int) (distance * 5)));
+
+        int ticks = Math.max(4, durationTicks);
+        Vector step = delta.multiply(1.0 / ticks);
         Location cursor = start.clone();
-        int steps = (int) Math.max(4, distance * 5);
-        for (int i = 0; i <= steps; i++) {
-            world.spawnParticle(
-                    Particle.CLOUD,
-                    cursor.clone().add(0, 0.45, 0),
-                    2,
-                    0.04, 0.05, 0.04,
-                    0.01
-            );
-            cursor.add(step);
-        }
-        world.spawnParticle(Particle.POOF, end.clone().add(0, 0.2, 0), 10, 0.2, 0.25, 0.2, 0.03);
+
+        new BukkitRunnable() {
+            int tick = 0;
+
+            @Override
+            public void run() {
+                if (tick >= ticks) {
+                    world.spawnParticle(Particle.POOF, end.clone().add(0, 0.2, 0), 3, 0.08, 0.1, 0.08, 0.008);
+                    cancel();
+                    return;
+                }
+                world.spawnParticle(
+                        particle,
+                        cursor.clone().add(0, yOffset, 0),
+                        1,
+                        0.02, 0.03, 0.02,
+                        speed);
+                cursor.add(step);
+                tick++;
+            }
+        }.runTaskTimer(MCZJUScriptionPlugin.getInstance(), 0L, 1L);
+    }
+
+    /** 献祭：掉落骨与腐肉展示物，稍后消失。 */
+    public static void playSacrificeDrops(Location loc) {
+        Location at = center(loc);
+        if (at == null) return;
+        World world = at.getWorld();
+        world.playSound(at, Sound.ENTITY_ITEM_PICKUP, 0.55f, 0.85f);
+        playDeath(at);
+        spawnCosmeticDrop(world, at, Material.BONE, -0.06, 0.12, -0.04);
+        spawnCosmeticDrop(world, at, Material.ROTTEN_FLESH, 0.06, 0.14, 0.04);
+    }
+
+    public static boolean isCosmeticDrop(Item item) {
+        if (item == null) return false;
+        return item.getPersistentDataContainer().has(InscriptionKeys.COSMETIC_DROP, PersistentDataType.BYTE);
+    }
+
+    private static void spawnCosmeticDrop(
+            World world, Location at, Material material, double vx, double vy, double vz) {
+        ItemStack stack = new ItemStack(material, 1);
+        Item drop = world.dropItem(at.clone().add(0, 0.55, 0), stack);
+        drop.setVelocity(new Vector(vx, vy, vz));
+        drop.setPickupDelay(Integer.MAX_VALUE);
+        drop.setCanMobPickup(false);
+        drop.getPersistentDataContainer().set(InscriptionKeys.COSMETIC_DROP, PersistentDataType.BYTE, (byte) 1);
+        Bukkit.getScheduler()
+                .runTaskLater(
+                        MCZJUScriptionPlugin.getInstance(),
+                        () -> {
+                            if (drop.isValid()) {
+                                drop.remove();
+                            }
+                        },
+                        SACRIFICE_DROP_LIFETIME_TICKS);
     }
 
     public static void playAttackAt(Location loc, int damage, boolean instantKill) {
@@ -109,8 +194,8 @@ public final class BoardVfx {
         Location at = center(loc);
         if (at == null) return;
         World world = at.getWorld();
-        world.spawnParticle(Particle.SMOKE, at, 16, 0.35, 0.45, 0.35, 0.03);
-        world.spawnParticle(Particle.ASH, at.clone().add(0, 0.3, 0), 12, 0.2, 0.3, 0.2, 0.02);
+        world.spawnParticle(Particle.SMOKE, at, 8, 0.2, 0.28, 0.2, 0.015);
+        world.spawnParticle(Particle.ASH, at.clone().add(0, 0.3, 0), 6, 0.12, 0.18, 0.12, 0.01);
     }
 
     /** 【自爆】主体：大爆炸 + 音效。 */

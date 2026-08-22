@@ -52,7 +52,7 @@ public final class DuelModePickMenu extends Menu {
                 });
 
         InscriptionPlayerData data =
-                player.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+                player.getData(InscriptionPlayerData.class);
         String curse = data.selectedCurse == null ? "none" : data.selectedCurse;
 
         setSlot(
@@ -94,7 +94,7 @@ public final class DuelModePickMenu extends Menu {
             return;
         }
         InscriptionPlayerData data =
-                ext.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+                ext.getData(InscriptionPlayerData.class);
         String curse = data.selectedCurse == null ? "none" : data.selectedCurse;
         String curseLine = curseDisplay(curse);
 

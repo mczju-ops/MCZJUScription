@@ -1,67 +1,31 @@
 package com.github.mczju.mczjuscription.game;
 
 import com.github.mczjuops.mczjugamecore.MCZJUGameCore;
-import com.github.mczjuops.mczjugamecore.game.GameMeta;
-import com.github.mczjuops.mczjugamecore.game.manager.AbstractGameManager;
 import com.github.mczjuops.mczjugamecore.game.room.AbstractGameRoom;
-import com.github.mczjuops.mczjugamecore.game.room.GameRoomManager;
+import com.github.mczjuops.mczjugamecore.game.room.GameRoomState;
 import com.github.mczjuops.mczjugamecore.player.PlayerExt;
 import com.github.mczju.mczjuscription.MCZJUScriptionPlugin;
 import com.github.mczju.mczjuscription.game.session.PlayVariant;
-import java.lang.reflect.Method;
-import java.util.Set;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 与 MCZJUGameCore 房间池 API 的兼容层：运行时探测，避免旧版 GameCore jar 导致 {@link NoSuchMethodError}。
+ * 与 MCZJUGameCore 1.0.8（paper-api 26.2 架构）的对接层。
  * <p>
- * 无法在 MCZJUScription 中继承 {@link com.github.mczjuops.mczjugamecore.game.manager.DefaultGameManager}
- *（GameCore 内部固定 {@code new DefaultGameManager()}）。
- * <p>
- * 大厅内开局请优先用 {@link com.github.mczju.mczjuscription.lobby.InscriptionHubMatchStarter}（插件内占用 play 房间）。
- * 本类 {@link #joinMatch} 仅在需要 quit 后新建实例时作可选回退（若服上 GameCore 带房间池 API）。
+ * 1.0.8 移除了旧版房间池 API（{@code joinGameFresh} / {@code defaultJoinRoomPool} / room pool 集合），
+ * 改为按房间名固定加入：{@code AbstractGameManager#joinGame(PlayerExt, String, String)}。
+ * 本类据此将「大厅 main」与「对局 play10–24」按房间名固定路由，避免撞上共享大厅实例。
  */
 public final class InscriptionGameCoreBridge {
-
-    private static boolean roomPoolsAvailable;
-    private static boolean joinGameFreshAvailable;
-    private static boolean pinnedRoomJoinAvailable;
 
     private InscriptionGameCoreBridge() {}
 
     public static void init(JavaPlugin plugin) {
-        roomPoolsAvailable = detectRoomPools();
-        joinGameFreshAvailable = detectJoinGameFresh();
-        pinnedRoomJoinAvailable = detectPinnedRoomJoin();
-        if (roomPoolsAvailable && joinGameFreshAvailable) {
-            plugin.getLogger().info("已启用 MGC 房间池（main / play10–19 / play20–24）。");
-            if (pinnedRoomJoinAvailable) {
-                plugin.getLogger().info("已启用 MGC 指定房间 join（roomId 参数）。");
-            }
-        } else {
-            plugin.getLogger()
-                    .warning(
-                            "当前 MCZJUGameCore 不含完整房间池 API，请用本地最新 GameCore 执行 mvn install 并替换服内 jar；"
-                                    + "否则开局可能仍占用 main。");
-        }
-    }
-
-    public static boolean roomPoolsAvailable() {
-        return roomPoolsAvailable;
-    }
-
-    public static void applyDefaultJoinRoomPool(GameMeta.Builder builder, Set<String> hubOnly) {
-        if (!roomPoolsAvailable) {
-            return;
-        }
-        try {
-            Method method = builder.getClass().getMethod("defaultJoinRoomPool", Set.class);
-            method.invoke(builder, hubOnly);
-        } catch (ReflectiveOperationException ignored) {
-            roomPoolsAvailable = false;
-        }
+        plugin.getLogger()
+                .info(
+                        "已接入 MCZJUGameCore 1.0.8：joinGame 按房间名固定（%s / play10–24）。"
+                                .formatted(InscriptionRoomPools.HUB));
     }
 
     /** 进入大厅；{@code roomId} 为 {@code null} 时默认 {@link InscriptionRoomPools#HUB}（main）。 */
@@ -70,27 +34,20 @@ public final class InscriptionGameCoreBridge {
     }
 
     public static void joinHub(PlayerExt player, @Nullable String roomId) {
-        joinGame(
-                player,
-                InscriptionGame.GAME_ID,
-                InscriptionRoomPools.HUB_ONLY,
-                roomId != null ? roomId : InscriptionRoomPools.HUB);
+        String room = roomId != null && !roomId.isBlank() ? roomId.trim() : InscriptionRoomPools.HUB;
+        MCZJUGameCore.getGameManager().joinGame(player, InscriptionGame.GAME_ID, room);
     }
 
     /**
-     * 对局结束后回到 main：优先 {@code joinGameFresh} 新建/加入大厅实例，避免仍挂在 play 对局实例上。
+     * 对局结束后回到 main：固定加入 main 房间。玩家已不在对局实例中，
+     * 因此 joinGame 会命中 main 上的等待大厅实例（或新建），无需旧版 joinGameFresh。
      */
     public static void joinHubFresh(PlayerExt player) {
         joinHubFresh(player, InscriptionRoomPools.HUB);
     }
 
     public static void joinHubFresh(PlayerExt player, @Nullable String roomId) {
-        String hubRoom = roomId != null ? roomId : InscriptionRoomPools.HUB;
-        if (joinGameFreshAvailable) {
-            joinGameFresh(player, InscriptionGame.GAME_ID, InscriptionRoomPools.HUB_ONLY, hubRoom);
-            return;
-        }
-        joinHub(player, hubRoom);
+        joinHub(player, roomId);
     }
 
     private static final int JOIN_MATCH_MAX_ATTEMPTS = 40;
@@ -119,153 +76,29 @@ public final class InscriptionGameCoreBridge {
                             2L);
             return;
         }
-        if (!roomPoolsAvailable) {
-            InscriptionPendingMatch.clear(player);
-            player.sender()
-                    .error(
-                            "<red>服务器 MCZJUGameCore 版本过旧，无法按 play10–24 分配场地。"
-                                    + " 请更新 GameCore 与 MCZJUScription 后完全重启。");
-            return;
-        }
         if (InscriptionPendingMatch.peek(player) == null) {
             InscriptionPendingMatch.set(player, variant);
         }
-        Set<String> pool = InscriptionRoomPools.forVariant(variant);
-        if (joinGameFreshAvailable) {
-            joinGameFresh(player, InscriptionGame.GAME_ID, pool, roomId);
+        String target =
+                roomId != null && !roomId.isBlank() ? roomId.trim() : firstLeisureRoom(variant);
+        if (target == null) {
+            InscriptionPendingMatch.clear(player);
+            player.sender()
+                    .error("<red>" + InscriptionRoomPools.poolLabel(variant) + " 已满，请稍后再试。");
             return;
         }
-        joinGame(player, InscriptionGame.GAME_ID, poolFor(roomId, pool), roomId);
+        MCZJUGameCore.getGameManager().joinGame(player, InscriptionGame.GAME_ID, target);
     }
 
-    public static void joinGame(
-            PlayerExt player, String gameId, @Nullable Set<String> roomPool, @Nullable String roomId) {
-        if (roomPoolsAvailable && (roomPool != null || roomId != null)) {
-            if (pinnedRoomJoinAvailable && roomId != null) {
-                try {
-                    Method method =
-                            AbstractGameManager.class.getMethod(
-                                    "joinGame",
-                                    PlayerExt.class,
-                                    String.class,
-                                    Set.class,
-                                    String.class);
-                    method.invoke(
-                            MCZJUGameCore.getGameManager(), player, gameId, roomPool, roomId);
-                    return;
-                } catch (ReflectiveOperationException ignored) {
-                    pinnedRoomJoinAvailable = false;
-                }
-            }
-            if (roomPool != null) {
-                try {
-                    Method method =
-                            AbstractGameManager.class.getMethod(
-                                    "joinGame", PlayerExt.class, String.class, Set.class);
-                    method.invoke(MCZJUGameCore.getGameManager(), player, gameId, poolFor(roomId, roomPool));
-                    return;
-                } catch (ReflectiveOperationException ignored) {
-                    roomPoolsAvailable = false;
-                }
+    /** 从变体房间池中挑第一个 READY 的 play 房间名；全部占用返回 {@code null}。 */
+    private static @Nullable String firstLeisureRoom(PlayVariant variant) {
+        for (String name : InscriptionRoomPools.forVariant(variant)) {
+            AbstractGameRoom room =
+                    MCZJUGameCore.getGameRoomManager().getGameRoom(InscriptionGame.GAME_ID, name);
+            if (room != null && room.getState() == GameRoomState.READY) {
+                return name;
             }
         }
-        if (roomPool != null && !roomPool.equals(InscriptionRoomPools.HUB_ONLY)) {
-            player.sender().error("<red>无法按指定场地池加入游戏，请更新 MCZJUGameCore。");
-            return;
-        }
-        MCZJUGameCore.getGameManager().joinGame(player, gameId);
-    }
-
-    private static void joinGameFresh(
-            PlayerExt player, String gameId, @Nullable Set<String> roomPool, @Nullable String roomId) {
-        if (pinnedRoomJoinAvailable && roomId != null) {
-            try {
-                Method method =
-                        AbstractGameManager.class.getMethod(
-                                "joinGameFresh",
-                                PlayerExt.class,
-                                String.class,
-                                Set.class,
-                                String.class);
-                method.invoke(MCZJUGameCore.getGameManager(), player, gameId, roomPool, roomId);
-                return;
-            } catch (ReflectiveOperationException ignored) {
-                pinnedRoomJoinAvailable = false;
-            }
-        }
-        try {
-            Method method =
-                    AbstractGameManager.class.getMethod(
-                            "joinGameFresh", PlayerExt.class, String.class, Set.class);
-            method.invoke(MCZJUGameCore.getGameManager(), player, gameId, poolFor(roomId, roomPool));
-        } catch (ReflectiveOperationException ex) {
-            joinGameFreshAvailable = false;
-            joinGame(player, gameId, roomPool, roomId);
-        }
-    }
-
-    private static Set<String> poolFor(@Nullable String roomId, @Nullable Set<String> fallback) {
-        if (roomId != null && !roomId.isBlank()) {
-            return Set.of(roomId.trim());
-        }
-        return fallback;
-    }
-
-    public static @Nullable AbstractGameRoom getLeisureGameRoom(String gameId, @Nullable Set<String> roomPool) {
-        return getLeisureGameRoom(gameId, roomPool, null);
-    }
-
-    public static @Nullable AbstractGameRoom getLeisureGameRoom(
-            String gameId, @Nullable Set<String> roomPool, @Nullable String roomId) {
-        if (roomId != null && !roomId.isBlank()) {
-            AbstractGameRoom pinned =
-                    MCZJUGameCore.getGameRoomManager().getLeisureGameRoomByName(gameId, roomId.trim());
-            if (pinned != null) {
-                return pinned;
-            }
-        }
-        if (roomPoolsAvailable && roomPool != null) {
-            try {
-                Method method =
-                        GameRoomManager.class.getMethod("getLeisureGameRoom", String.class, Set.class);
-                return (AbstractGameRoom)
-                        method.invoke(MCZJUGameCore.getGameRoomManager(), gameId, roomPool);
-            } catch (ReflectiveOperationException ignored) {
-                roomPoolsAvailable = false;
-            }
-        }
-        return MCZJUGameCore.getGameRoomManager().getLeisureGameRoom(gameId);
-    }
-
-    private static boolean detectRoomPools() {
-        try {
-            GameMeta.Builder.class.getMethod("defaultJoinRoomPool", Set.class);
-            GameRoomManager.class.getMethod("getLeisureGameRoom", String.class, Set.class);
-            AbstractGameManager.class.getMethod("joinGame", PlayerExt.class, String.class, Set.class);
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
-    private static boolean detectJoinGameFresh() {
-        try {
-            AbstractGameManager.class.getMethod(
-                    "joinGameFresh", PlayerExt.class, String.class, Set.class);
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
-    private static boolean detectPinnedRoomJoin() {
-        try {
-            AbstractGameManager.class.getMethod(
-                    "joinGameFresh", PlayerExt.class, String.class, Set.class, String.class);
-            GameRoomManager.class.getMethod("getLeisureGameRoomByName", String.class, String.class);
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
+        return null;
     }
 }

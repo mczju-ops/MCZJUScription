@@ -26,7 +26,7 @@ public final class CursePlaceholderMenu extends Menu {
     protected void setup() {
         inventory.clear();
         InscriptionPlayerData data =
-                player.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+                player.getData(InscriptionPlayerData.class);
         String current = data.selectedCurse == null ? "none" : data.selectedCurse;
 
         int slot = 10;

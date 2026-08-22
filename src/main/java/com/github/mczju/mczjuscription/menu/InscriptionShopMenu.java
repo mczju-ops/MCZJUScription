@@ -54,8 +54,7 @@ public final class InscriptionShopMenu extends Menu {
                     "<gray>骨币: <gold>" + bones + "  <gray>腐肉: <red>" + blood + "  <gray>鱼干: <aqua>" + fish,
                     "<aqua>常驻×4: <white>每回合总共可买 "
                         + ParticipantShopState.MAX_PERMANENT_PER_TURN
-                        + " 张"
-                        + (permanentBlocked ? " <red>(已达上限)" : " <gray>(剩余 " + permanentRemaining + ")"),
+                        + " 张 <gray>(剩余 " + permanentRemaining + ")",
                     "<yellow>刷新×3: <white>每格每回合只能买 1 次",
                     extraUnlocked
                         ? "<green>第 4 刷新格已解锁"
@@ -66,7 +65,8 @@ public final class InscriptionShopMenu extends Menu {
     for (int i = 0; i < ShopLayout.PERMANENT.length; i++) {
       int slot = ShopLayout.PERMANENT[i];
       ShopOffer offer = config.permanent(i);
-      placeOffer(slot, offer, bones, ShopPurchaseLane.PERMANENT, permanentBlocked, -1);
+      placeOffer(
+          slot, offer, bones, ShopPurchaseLane.PERMANENT, permanentBlocked, -1, permanentRemaining);
     }
 
     for (int i = 0; i < ShopLayout.ROTATING.length; i++) {
@@ -80,7 +80,7 @@ public final class InscriptionShopMenu extends Menu {
         continue;
       }
       ShopOffer offer = state.rotatingOffer(i);
-      placeOffer(layoutSlot, offer, bones, ShopPurchaseLane.ROTATING, false, i);
+      placeOffer(layoutSlot, offer, bones, ShopPurchaseLane.ROTATING, false, i, -1);
     }
 
     setSlot(
@@ -128,14 +128,21 @@ public final class InscriptionShopMenu extends Menu {
       int bones,
       ShopPurchaseLane lane,
       boolean permanentBlocked,
-      int rotatingSlotIndex) {
+      int rotatingSlotIndex,
+      int permanentRemaining) {
     String tag = lane == ShopPurchaseLane.PERMANENT ? "常驻" : "本回合刷新";
     if (offer.isEmpty()) {
+      List<String> emptyLore = new ArrayList<>();
+      emptyLore.add("<gray>" + tag);
+      if (lane == ShopPurchaseLane.PERMANENT && permanentRemaining >= 0) {
+        emptyLore.add(
+            "<gray>常驻造物购买次数还剩 <white>" + permanentRemaining + "<gray> 次");
+      }
       setSlot(
           slot,
           ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE)
               .customName("<dark_gray>空位")
-              .lore(List.of("<gray>" + tag))
+              .lore(emptyLore)
               .build(),
           (p, e) -> {});
       return;
@@ -146,18 +153,22 @@ public final class InscriptionShopMenu extends Menu {
     boolean blocked = lane == ShopPurchaseLane.PERMANENT && permanentBlocked;
     List<String> lore = new ArrayList<>();
     lore.add("<gray>" + tag);
+    lore.add("<gray>力/命 <white>" + def.power() + "/" + def.health());
+    lore.add("<dark_purple>印记: <light_purple>" + def.sigilsDisplay());
     if (lane == ShopPurchaseLane.PERMANENT) {
-      lore.add("<dark_gray>本回合最多购 " + ParticipantShopState.MAX_PERMANENT_PER_TURN + " 张");
+      if (permanentRemaining >= 0) {
+        lore.add("<gray>常驻造物购买次数还剩 <white>" + permanentRemaining + "<gray> 次");
+      }
     } else {
       lore.add("<dark_gray>本格本回合仅可购 1 次");
     }
     lore.add("<gray>价格: <gold>" + (price == 0 ? "免费" : price + " 骨币"));
-    if (blocked) {
-      lore.add("<red>本回合常驻购卡已达上限");
-    } else if (affordable) {
-      lore.add("<green>点击购买");
-    } else {
-      lore.add("<red>骨币不足");
+    if (!blocked) {
+      if (affordable) {
+        lore.add("<green>点击购买");
+      } else {
+        lore.add("<red>骨币不足");
+      }
     }
     setSlot(
         slot,

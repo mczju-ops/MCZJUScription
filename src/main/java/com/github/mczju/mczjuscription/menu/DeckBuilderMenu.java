@@ -37,7 +37,7 @@ public class DeckBuilderMenu extends Menu {
     } else {
       InscriptionPlayerData data =
           new com.github.mczjuops.mczjugamecore.player.PlayerExt(player)
-              .getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+              .getData(InscriptionPlayerData.class);
       List<String> loaded = DefaultDeckLists.parseDeck(data.savedDeck);
       this.editing =
           new ArrayList<>(loaded.isEmpty() ? DefaultDeckLists.starterFreeBuildDeck() : loaded);
@@ -118,7 +118,7 @@ public class DeckBuilderMenu extends Menu {
   }
 
   private void save() {
-    InscriptionPlayerData data = player.getData(AbstractInscriptionGame.DATA_ID, InscriptionPlayerData.class);
+    InscriptionPlayerData data = player.getData(InscriptionPlayerData.class);
     data.savedDeck = new ArrayList<>(editing);
     data.setModified(true);
     player.sender().success("<green>牌组已保存（共 %d 张）".formatted(editing.size()));

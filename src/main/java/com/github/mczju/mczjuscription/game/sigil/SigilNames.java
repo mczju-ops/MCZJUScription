@@ -55,6 +55,7 @@ public final class SigilNames {
       case SURPRISE_ENTRY -> "意外";
       case SNIFF_STEAL -> "嗅探";
       case GUARD_DOG -> "守卫者";
+      case ABUNDANCE -> "丰饶";
     };
   }
 

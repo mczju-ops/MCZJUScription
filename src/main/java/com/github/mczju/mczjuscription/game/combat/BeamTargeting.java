@@ -45,61 +45,122 @@ public final class BeamTargeting {
 
 
   public static void begin(
-
       InscriptionMatch match,
-
       CombatResolver resolver,
-
       MatchSide attackerSide,
-
       int slotIndex,
-
       BoardCreature attacker,
-
       int strikeRound,
-
       Runnable onSlotComplete) {
+    openBeamSession(
+        match,
+        resolver,
+        attackerSide,
+        slotIndex,
+        attacker,
+        strikeRound,
+        onSlotComplete,
+        null,
+        -1);
+  }
 
+  /** 【兵分三路 + 射线】：按左→中→右依次进入射线选目标；带【追击】时每列连选连打两次。 */
+  public static void beginTriBeam(
+      InscriptionMatch match,
+      CombatResolver resolver,
+      MatchSide attackerSide,
+      int slotIndex,
+      BoardCreature attacker,
+      int[] triDefenderLanes,
+      int triPhaseIndex,
+      int strikeRound,
+      Runnable onSlotComplete) {
+    if (triDefenderLanes == null
+        || triPhaseIndex < 0
+        || triPhaseIndex >= triDefenderLanes.length) {
+      onSlotComplete.run();
+      return;
+    }
+    openBeamSession(
+        match,
+        resolver,
+        attackerSide,
+        slotIndex,
+        attacker,
+        strikeRound,
+        onSlotComplete,
+        triDefenderLanes,
+        triPhaseIndex);
+  }
+
+  private static void openBeamSession(
+      InscriptionMatch match,
+      CombatResolver resolver,
+      MatchSide attackerSide,
+      int slotIndex,
+      BoardCreature attacker,
+      int strikeRound,
+      Runnable onSlotComplete,
+      int[] triDefenderLanes,
+      int triPhaseIndex) {
     cancel(match);
 
-
-
     List<BoardCreature> targets = listSelectableTargets(match, attackerSide, attacker);
-
     if (targets.isEmpty()
-
         && CombatModifiers.effectiveAttack(match.board(), attacker, null) <= 0) {
-
+      if (triDefenderLanes != null && triPhaseIndex >= 0) {
+        int next = triPhaseIndex + 1;
+        if (next < triDefenderLanes.length) {
+          beginTriBeam(
+              match,
+              resolver,
+              attackerSide,
+              slotIndex,
+              attacker,
+              triDefenderLanes,
+              next,
+              strikeRound,
+              onSlotComplete);
+        } else {
+          onSlotComplete.run();
+        }
+        return;
+      }
       resolver.resolveBeamWithoutTarget(attackerSide, attacker, onSlotComplete);
-
       return;
-
     }
 
-
-
     BeamCombatSession session =
-
-        new BeamCombatSession(
-
-            resolver, attackerSide, slotIndex, attacker, strikeRound, onSlotComplete);
-
+        triDefenderLanes != null
+            ? new BeamCombatSession(
+                resolver,
+                attackerSide,
+                slotIndex,
+                attacker,
+                strikeRound,
+                onSlotComplete,
+                triDefenderLanes,
+                triPhaseIndex)
+            : new BeamCombatSession(
+                resolver, attackerSide, slotIndex, attacker, strikeRound, onSlotComplete);
     match.setBeamSession(session);
 
-
-
     match.feedback()
-
         .announceInfo(
-
             "<gold>【%s】<white>：请用献祭之剑指定攻击列"
-
                 .formatted(attacker.displayName()));
-
-    match.feedback()
-
-        .actionBarInfo("<yellow>左键敌方槽位选定；再次左键同一槽位确认（空槽=直伤）");
-
+    if (session.isTriBeam()) {
+      int col = triDefenderLanes[triPhaseIndex];
+      String phase = triPhaseLabel(triPhaseIndex, triDefenderLanes.length);
+      String suffix = strikeRound > 0 ? "（追击）" : "";
+      match.feedback()
+          .actionBarInfo(
+              "<yellow>【兵分三路·射线】%s · 第 %d 列%s：左键选目标，再次确认"
+                  .formatted(phase, col + 1, suffix));
+    } else {
+      match.feedback()
+          .actionBarInfo("<yellow>左键敌方槽位选定；再次左键同一槽位确认（空槽=直伤）");
+    }
   }
 
 
@@ -150,9 +211,9 @@ public final class BeamTargeting {
 
 
 
-    if (!isSelectableTarget(match, session.attackerSide(), attacker, clicked)) {
+    if (!isLaneStrikeable(match, session.attackerSide(), attacker, clicked)) {
 
-      match.feedback().actionBarWarn("<red>无法攻击该造物（震慑或攻击力为 0）");
+      match.feedback().actionBarWarn("<red>无法攻击该列（震慑或攻击力为 0）");
       beamSound(match, session.attackerSide(), ArenaSlotSounds.Kind.REJECT);
 
       return true;
@@ -224,20 +285,9 @@ public final class BeamTargeting {
 
     BoardCreature defender = slot.isEmpty() ? null : slot.creature();
 
-    if (defender != null) {
+    if (!isLaneStrikeable(match, session.attackerSide(), attacker, defender)) {
 
-      if (!isSelectableTarget(match, session.attackerSide(), attacker, defender)) {
-
-        match.feedback().actionBarWarn("<red>无法攻击该造物（震慑或攻击力为 0）");
-        beamSound(match, session.attackerSide(), ArenaSlotSounds.Kind.REJECT);
-
-        return true;
-
-      }
-
-    } else if (CombatModifiers.effectiveAttack(match.board(), attacker, null) <= 0) {
-
-      match.feedback().actionBarWarn("<red>攻击力为 0，无法直伤");
+      match.feedback().actionBarWarn("<red>无法攻击该列（震慑或攻击力为 0）");
       beamSound(match, session.attackerSide(), ArenaSlotSounds.Kind.REJECT);
 
       return true;
@@ -343,19 +393,19 @@ public final class BeamTargeting {
 
 
     if (defender != null) {
-
-      match.feedback()
-
-          .actionBarInfo(
-
-              "<green>已选定 <white>%s<green>，再次左键确认攻击"
-
-                  .formatted(defender.displayName()));
-
+      if (CombatModifiers.laneStrikeMode(match.board(), session.attackerSide(), attacker, defender)
+          == CombatModifiers.LaneStrikeMode.CREATURE) {
+        match.feedback()
+            .actionBarInfo(
+                "<green>已选定 <white>%s<green>，再次左键确认攻击"
+                    .formatted(defender.displayName()));
+      } else {
+        match.feedback()
+            .actionBarInfo(
+                "<green>已选定第 %d 列（潜水/空袭直伤），再次左键确认".formatted(lane + 1));
+      }
     } else {
-
       match.feedback().actionBarInfo("<green>已选定空槽 %d，再次左键确认直伤".formatted(lane + 1));
-
     }
 
     return true;
@@ -411,46 +461,23 @@ public final class BeamTargeting {
 
 
     Runnable afterStrike =
-
         () -> {
-
           if (attacker.isDead() || match.shouldStopCombatSequence()) {
-
             session.onSlotComplete().run();
-
             return;
-
           }
-
           if (attacker.hasSigil(SigilId.DOUBLE_STRIKE) && session.strikeRound() == 0) {
-
-            begin(
-
-                match,
-
-                session.resolver(),
-
-                session.attackerSide(),
-
-                session.slotIndex(),
-
-                attacker,
-
-                1,
-
-                session.onSlotComplete());
-
-          } else {
-
-            session.onSlotComplete().run();
-
+            resumeBeamSession(match, session, attacker, 1);
+            return;
           }
-
+          advanceTriBeamOrFinish(match, session, attacker);
         };
 
 
 
-    if (defender != null) {
+    if (defender != null
+        && CombatModifiers.laneStrikeMode(match.board(), session.attackerSide(), attacker, defender)
+            == CombatModifiers.LaneStrikeMode.CREATURE) {
 
       session.resolver().resolveBeamOnTarget(session.attackerSide(), attacker, defender, afterStrike);
 
@@ -463,6 +490,65 @@ public final class BeamTargeting {
   }
 
 
+
+  private static void resumeBeamSession(
+      InscriptionMatch match, BeamCombatSession session, BoardCreature attacker, int strikeRound) {
+    if (session.isTriBeam()) {
+      beginTriBeam(
+          match,
+          session.resolver(),
+          session.attackerSide(),
+          session.slotIndex(),
+          attacker,
+          session.triDefenderLanes(),
+          session.triPhaseIndex(),
+          strikeRound,
+          session.onSlotComplete());
+    } else {
+      begin(
+          match,
+          session.resolver(),
+          session.attackerSide(),
+          session.slotIndex(),
+          attacker,
+          strikeRound,
+          session.onSlotComplete());
+    }
+  }
+
+  private static void advanceTriBeamOrFinish(
+      InscriptionMatch match, BeamCombatSession session, BoardCreature attacker) {
+    if (!session.isTriBeam()) {
+      session.onSlotComplete().run();
+      return;
+    }
+    int nextPhase = session.triPhaseIndex() + 1;
+    if (nextPhase >= session.triDefenderLanes().length) {
+      session.onSlotComplete().run();
+      return;
+    }
+    beginTriBeam(
+        match,
+        session.resolver(),
+        session.attackerSide(),
+        session.slotIndex(),
+        attacker,
+        session.triDefenderLanes(),
+        nextPhase,
+        0,
+        session.onSlotComplete());
+  }
+
+  private static String triPhaseLabel(int phaseIndex, int phaseCount) {
+    if (phaseCount <= 1) {
+      return "单列";
+    }
+    return switch (phaseIndex) {
+      case 0 -> "左路";
+      case 1 -> phaseCount == 3 ? "中路" : "右路";
+      default -> "右路";
+    };
+  }
 
   private static void clearPendingGlow(InscriptionMatch match, BeamCombatSession session) {
 
@@ -542,10 +628,18 @@ public final class BeamTargeting {
 
     if (defender.owner() == attacker.owner()) return false;
 
-    if (CombatModifiers.preventsAttack(defender)) return false;
+    return CombatModifiers.laneStrikeMode(match.board(), attackerSide, attacker, defender)
+        == CombatModifiers.LaneStrikeMode.CREATURE;
 
-    return CombatModifiers.effectiveAttack(match.board(), attacker, defender) > 0;
+  }
 
+  private static boolean isLaneStrikeable(
+      InscriptionMatch match,
+      MatchSide attackerSide,
+      BoardCreature attacker,
+      BoardCreature defenderOrNull) {
+    return CombatModifiers.laneStrikeMode(match.board(), attackerSide, attacker, defenderOrNull)
+        != CombatModifiers.LaneStrikeMode.NONE;
   }
 
   private static void beamSound(InscriptionMatch match, MatchSide side, ArenaSlotSounds.Kind kind) {

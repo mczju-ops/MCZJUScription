@@ -72,6 +72,9 @@ public final class BoardCreature {
   }
 
   public void bind(BoardSlot slot) {
+    if (this.slot != null && this.slot != slot) {
+      this.slot.clear();
+    }
     this.slot = slot;
     slot.setCreature(this);
   }

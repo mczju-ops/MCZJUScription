@@ -12,7 +12,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 
 /**
  * 场面位移（左冲 / 右冲 / 推挤 / 随机换格）。不同印记可指定移动表现。
@@ -64,7 +63,36 @@ public final class BoardShift {
     return moveToIndex(match, creature, target, style);
   }
 
+  /** 游荡：在左/右相邻格中随机选一方向移动（空位直走；【蛮力】可推挤再占格）。 */
+  public static boolean moveRandomAdjacent(
+      InscriptionMatch match, BoardCreature creature, ShiftStyle style) {
+    BoardSlot from = creature.slot();
+    if (from == null) return false;
+    BoardSlot[] row = match.board().row(from.owner());
+    List<Integer> deltas = new ArrayList<>();
+    for (int delta : new int[] {-1, 1}) {
+      int targetIndex = from.index() + delta;
+      if (targetIndex < 0 || targetIndex >= BoardSlot.SLOT_COUNT) continue;
+      if (row[targetIndex].isEmpty()) {
+        deltas.add(delta);
+      } else if (creature.hasSigil(SigilId.RUSH_PUSH)) {
+        int pushTo = targetIndex + delta;
+        if (pushTo >= 0 && pushTo < BoardSlot.SLOT_COUNT && row[pushTo].isEmpty()) {
+          deltas.add(delta);
+        }
+      }
+    }
+    if (deltas.isEmpty()) return false;
+    int delta = deltas.get(ThreadLocalRandom.current().nextInt(deltas.size()));
+    return move(match, creature, delta, style);
+  }
+
   public static boolean move(InscriptionMatch match, BoardCreature creature, int delta) {
+    return move(match, creature, delta, ShiftStyle.INSTANT);
+  }
+
+  public static boolean move(
+      InscriptionMatch match, BoardCreature creature, int delta, ShiftStyle style) {
     BoardSlot from = creature.slot();
     if (from == null || delta == 0) return false;
     int targetIndex = from.index() + delta;
@@ -73,7 +101,7 @@ public final class BoardShift {
     BoardSlot[] row = match.board().row(from.owner());
     BoardSlot to = row[targetIndex];
     if (to.isEmpty()) {
-      return relocate(match, creature, from, to, ShiftStyle.INSTANT);
+      return relocate(match, creature, from, to, style);
     }
     if (creature.hasSigil(SigilId.RUSH_PUSH)) {
       BoardCreature blocker = to.creature();
@@ -81,10 +109,82 @@ public final class BoardShift {
       int pushTo = targetIndex + delta;
       if (pushTo < 0 || pushTo >= BoardSlot.SLOT_COUNT) return false;
       if (!row[pushTo].isEmpty()) return false;
-      relocate(match, blocker, to, row[pushTo], ShiftStyle.INSTANT);
-      return relocate(match, creature, from, to, ShiftStyle.INSTANT);
+      return relocatePushThenWalk(match, creature, blocker, from, to, row[pushTo], style);
     }
     return false;
+  }
+
+  /** 【蛮力】推挤相邻造物后，推挤者占入该格；先播被推挤者滑出，再播推挤者走入。 */
+  private static boolean relocatePushThenWalk(
+      InscriptionMatch match,
+      BoardCreature pusher,
+      BoardCreature pushed,
+      BoardSlot pusherFrom,
+      BoardSlot middle,
+      BoardSlot pushDest,
+      ShiftStyle pusherStyle) {
+    if (match.arena() == null) {
+      pushed.bind(pushDest);
+      pusher.bind(middle);
+      return true;
+    }
+
+    int middleIdx = middle.index();
+    int pusherFromIdx = pusherFrom.index();
+    SlotOwner rowOwner = middle.owner();
+
+    Location pusherFromLoc = match.arena().slotLocation(rowOwner, pusherFromIdx);
+    Location middleLoc = match.arena().slotLocation(rowOwner, middleIdx);
+    Location pushDestLoc =
+        match.arena().slotLocation(pushDest.owner(), pushDest.index());
+    if (pusherFromLoc == null || middleLoc == null || pushDestLoc == null) {
+      pushed.bind(pushDest);
+      pusher.bind(middle);
+      return true;
+    }
+
+    pushed.bind(pushDest);
+    pusher.bind(middle);
+
+    Location faceToward = opponentSlot(match, rowOwner, middleIdx);
+    Runnable walkPusher =
+        () -> {
+          if (hasLiveEntity(pusher)) {
+            if (pusherStyle == ShiftStyle.WALK) {
+              CreatureAnimator.playMoveSequence(
+                  pusher, pusherFromLoc, middleLoc, faceToward, () -> match.refreshCreatureLabels());
+            } else {
+              BoardVfx.playMove(pusherFromLoc, middleLoc, 6);
+              CreatureEntityService.snapToBoardSlot(match, pusher, rowOwner, middleIdx, middleLoc);
+              match.refreshCreatureLabels();
+            }
+          } else {
+            BoardVfx.playMove(pusherFromLoc, middleLoc, CreatureAnimator.MOVE_TICKS + 4);
+            match.spawnCreatureEntity(pusher, rowOwner, middleIdx);
+            match.refreshCreatureLabels();
+          }
+        };
+
+    if (hasLiveEntity(pushed)) {
+      CreatureEntityService.snapToBoardSlot(match, pushed, rowOwner, middleIdx, middleLoc);
+      CreatureAnimator.playPushSlide(
+          pushed,
+          middleLoc,
+          pushDestLoc,
+          () -> {
+            CreatureEntityService.snapToBoardSlot(match, pushed);
+            if (hasLiveEntity(pusher)) {
+              CreatureEntityService.snapToBoardSlot(
+                  match, pusher, rowOwner, pusherFromIdx, pusherFromLoc);
+            }
+            walkPusher.run();
+          });
+    } else {
+      BoardVfx.playPushImpact(pushDestLoc);
+      match.spawnCreatureEntity(pushed, pushDest.owner(), pushDest.index());
+      walkPusher.run();
+    }
+    return true;
   }
 
   private static boolean relocate(
@@ -122,7 +222,7 @@ public final class BoardShift {
       BoardSlot to,
       Location fromLoc,
       Location toLoc) {
-    BoardVfx.playMove(fromLoc, toLoc);
+    BoardVfx.playMove(fromLoc, toLoc, 6);
     CreatureEntityService.despawn(creature);
     from.clear();
     creature.bind(to);
@@ -137,13 +237,13 @@ public final class BoardShift {
       BoardSlot to,
       Location fromLoc,
       Location toLoc) {
-    from.clear();
     creature.bind(to);
     Location faceToward = opponentSlot(match, from.owner(), to.index());
     if (hasLiveEntity(creature)) {
-      CreatureAnimator.playMoveSequence(creature, fromLoc, toLoc, faceToward, () -> {});
+      CreatureAnimator.playMoveSequence(
+          creature, fromLoc, toLoc, faceToward, () -> match.refreshCreatureLabels());
     } else {
-      BoardVfx.playMove(fromLoc, toLoc);
+      BoardVfx.playMove(fromLoc, toLoc, CreatureAnimator.MOVE_TICKS + 4);
       match.spawnCreatureEntity(creature, to.owner(), to.index());
     }
     return true;
@@ -159,9 +259,16 @@ public final class BoardShift {
     from.clear();
     creature.bind(to);
     if (hasLiveEntity(creature)) {
-      CreatureAnimator.playBreezeJump(creature, fromLoc, toLoc, () -> {});
+      CreatureAnimator.playBreezeJump(
+          creature,
+          fromLoc,
+          toLoc,
+          () -> {
+            CreatureEntityService.snapToBoardSlot(match, creature);
+            match.refreshCreatureLabels();
+          });
     } else {
-      BoardVfx.playMove(fromLoc, toLoc);
+      BoardVfx.playMove(fromLoc, toLoc, CreatureAnimator.MOVE_TICKS + 4);
       match.spawnCreatureEntity(creature, to.owner(), to.index());
     }
     return true;
@@ -179,7 +286,7 @@ public final class BoardShift {
     creature.bind(to);
     Location end = CreatureAnimator.slotStand(creature, toLoc);
     if (hasLiveEntity(creature)) {
-      snapEntity(creature, end);
+      CreatureEntityService.snapToBoardSlot(match, creature, to.owner(), to.index(), toLoc);
     } else {
       match.spawnCreatureEntity(creature, to.owner(), to.index());
     }
@@ -197,25 +304,5 @@ public final class BoardShift {
     if (creature.entityId() == null) return false;
     Entity entity = Bukkit.getEntity(creature.entityId());
     return entity != null && entity.isValid();
-  }
-
-  private static void snapEntity(BoardCreature creature, Location end) {
-    if (end == null) return;
-    Entity body = creature.entityId() == null ? null : Bukkit.getEntity(creature.entityId());
-    if (body == null || !body.isValid()) return;
-
-    Location goal = end.clone();
-    goal.setYaw(body.getLocation().getYaw());
-    goal.setPitch(body.getLocation().getPitch());
-    body.teleport(goal);
-
-    if (creature.displayEntityId() != null) {
-      Entity label = Bukkit.getEntity(creature.displayEntityId());
-      if (label != null && label.isValid()) {
-        double labelOffset =
-            body instanceof LivingEntity living ? living.getHeight() + 0.35 : 0.55;
-        label.teleport(goal.clone().add(0, labelOffset, 0));
-      }
-    }
   }
 }
